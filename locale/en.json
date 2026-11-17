@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Task panels",
+    "description": "Connect Qinglong or Daidai panels with their OpenAPI application credentials and manage hosts, environment variables, and scheduled tasks from the sidebar; every other resource is reachable through the agent tools."
+  }
+}

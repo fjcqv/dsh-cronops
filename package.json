@@ -1,0 +1,65 @@
+{
+  "name": "dsh-cronops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cron/task panel console for the dsh web GUI (青龙面板 / 呆呆面板): one sidebar page for panel connections, environment variables and scheduled tasks over each panel’s OpenAPI app credential, plus agent tools for every other resource.",
+  "type": "module",
+  "icon": "icon.svg",
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.2-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "qinglong",
+    "daidai",
+    "青龙",
+    "呆呆",
+    "cron",
+    "scheduler",
+    "panel",
+    "openapi"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fjcqv/dsh-cronops.git"
+  },
+  "homepage": "https://github.com/fjcqv/dsh-cronops#readme",
+  "bugs": {
+    "url": "https://github.com/fjcqv/dsh-cronops/issues"
+  },
+  "license": "Apache-2.0"
+}
