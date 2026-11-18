@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { PanelEngine } from '../lib/engine.js'
+import { QinglongError, classifyProbeError } from '../lib/qinglong.js'
 import { makeRoutes } from '../lib/routes.js'
 import { PanelStore } from '../lib/store.js'
 import { startDaidaiMock } from './mock-daidai.mjs'
@@ -135,6 +136,8 @@ async function main() {
       expect(ok.json.result.auth === 'ok', 'credential accepted', ok.json.result)
       const scopes = ok.json.result.scopes ?? {}
       expect(scopes.envs === 'ok' && scopes.crons === 'ok', 'scope probe reports envs/crons', scopes)
+      // The dependency probe takes the cheap filtered path first.
+      expect(mock.dependencyRequests()[0]?.type === 'python3', 'dependency probe uses type=python3', mock.dependencyRequests())
       expect(scopes.system === 'public', 'public system endpoint reported', scopes)
       expect(JSON.stringify(ok.json.result).includes('mock-secret') === false, 'probe never leaks the secret', ok.json.result)
 
@@ -331,6 +334,38 @@ async function main() {
 
       const removed = await call(server.baseUrl, '/api/dsh-cronops/panels', { method: 'DELETE', query: { alias: 'second' } })
       expect(removed.status === 200, 'deletes the second panel', removed.json)
+    })
+
+    await section('probe classification and dependency fallback', async () => {
+      const classify = error => classifyProbeError(error)
+      const timeoutError = Object.assign(new Error('request timed out after 1000 ms'), { code: 'ETIMEDOUT' })
+      expect(classify(timeoutError) === 'timeout', 'timeout classified as timeout', classify(timeoutError))
+      expect(classify(new QinglongError('暂无权限', { code: 403, status: 403 })) === 'forbidden', '403 classified as forbidden')
+      expect(classify(new QinglongError('Token 已失效', { code: 401, status: 401, needsAuth: true })) === 'auth', '401 classified as auth')
+      expect(classify(new Error('ECONNREFUSED')) === 'error', 'network error classified as error')
+
+      // A slow unfiltered list must still succeed through the fallback path.
+      const slow = await startMock({ slowDependencies: true })
+      try {
+        const created = await call(server.baseUrl, '/api/dsh-cronops/panels', {
+          method: 'POST',
+          body: {
+            alias: 'slowdep',
+            baseUrl: slow.baseUrl,
+            auth: { kind: 'open', clientId: 'mock-client', clientSecret: 'mock-secret' },
+            timeoutMs: 1000,
+          },
+        })
+        expect(created.status === 201, 'slow-dependency panel created', created.json)
+        const result = await call(server.baseUrl, '/api/dsh-cronops/test', { method: 'POST', body: { alias: 'slowdep' } })
+        expect(result.json.result.scopes?.dependencies === 'ok', 'fallback probe still reports dependencies ok', result.json.result.scopes)
+        const requests = slow.dependencyRequests()
+        expect(requests.length >= 2 && requests[0].type === 'python3' && requests[1].type === null,
+          'fallback retried without the type filter', requests)
+        await call(server.baseUrl, '/api/dsh-cronops/panels', { method: 'DELETE', query: { alias: 'slowdep' } })
+      } finally {
+        await slow.close()
+      }
     })
 
     await section('daidai: kind, probe, scopes, envs, tasks', async () => {

@@ -29,6 +29,8 @@ const state = {
   ],
   nextEnvId: 3,
   nextCronId: 3,
+  /** every `/open/dependencies` request this process served: { type, search } */
+  dependencyRequests: [],
 }
 
 /** Read a JSON body. */
@@ -106,7 +108,20 @@ export async function startMock(options = {}) {
       return send(res, { code: 403, message: '暂无权限' })
     }
     if (path === '/open/dependencies') {
-      return send(res, { code: 200, data: [{ name: 'nodejs', dependencie: [] }] })
+      const type = url.searchParams.get('type')
+      const search = url.searchParams.get('searchValue')
+      state.dependencyRequests.push({ type, search })
+      if (options.slowDependencies === true) {
+        // A full scan on a real panel takes 10-16 s; 1.5 s is enough to make a
+        // short probe ceiling bite without slowing the suite down.
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      }
+      const rows = type === 'python3'
+        ? [{ name: 'requests', type: 1, status: 1 }]
+        : type === 'nodejs'
+          ? [{ name: 'tough-cookie', type: 0, status: 1 }]
+          : [{ name: 'tough-cookie', type: 0, status: 1 }, { name: 'requests', type: 1, status: 1 }]
+      return send(res, { code: 200, data: rows })
     }
     if (path === '/open/subscriptions') {
       return send(res, { code: 200, data: [] })
@@ -292,12 +307,15 @@ export async function startMock(options = {}) {
     return businessFailure(res, `mock: 未实现的接口 ${method} ${path}`, 404)
   })
 
+  state.dependencyRequests = []
   await new Promise(resolve => server.listen(options.port ?? 0, '127.0.0.1', resolve))
   const address = server.address()
   const port = typeof address === 'object' && address !== null ? address.port : 0
   return {
     port,
     baseUrl: `http://127.0.0.1:${port}`,
+    /** Requests this instance served to `/open/dependencies`, in order. */
+    dependencyRequests: () => [...state.dependencyRequests],
     close: () => new Promise(resolve => server.close(resolve)),
   }
 }

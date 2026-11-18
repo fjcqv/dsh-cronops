@@ -93,6 +93,7 @@ window.__ModuleLoader__.load({
       'scope.state.ok': '有权限',
       'scope.state.forbidden': '无权限',
       'scope.state.error': '探测失败',
+      'scope.state.timeout': '超时',
       'scope.state.public': '公开',
       'scope.state.na': '不适用',
       'panels.add': '新增面板',
@@ -240,6 +241,7 @@ window.__ModuleLoader__.load({
       'scope.state.ok': 'granted',
       'scope.state.forbidden': 'missing',
       'scope.state.error': 'probe failed',
+      'scope.state.timeout': 'timed out',
       'scope.state.public': 'public',
       'scope.state.na': 'n/a',
       'panels.add': 'New panel',
@@ -847,6 +849,7 @@ window.__ModuleLoader__.load({
           ok: ['ok', '✓'],
           public: ['ok', '✓'],
           forbidden: ['warn', '✗'],
+          timeout: ['warn', '⏱'],
           error: ['error', '?'],
           'n/a': ['unknown', '–'],
         }
@@ -871,7 +874,8 @@ window.__ModuleLoader__.load({
             : value === 'ok' ? tt('scope.state.ok')
               : value === 'public' ? tt('scope.state.public')
                 : value === 'forbidden' ? tt('scope.state.forbidden')
-                  : tt('scope.state.error')
+                  : value === 'timeout' ? tt('scope.state.timeout')
+                    : tt('scope.state.error')
           return h('span', {
             key: name,
             className: 'dq-chip',
