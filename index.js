@@ -3,7 +3,7 @@
  *
  * Mounts the panel store ($DSH_HOME/dsh-cronops.json), the panel drivers
  * (青龙 / 呆呆), the /api/dsh-cronops route family, the agent tools
- * (qinglong_panels / qinglong_envs / qinglong_crons / qinglong_api), and an
+ * (cronops_panels / cronops_envs / cronops_crons / cronops_api), and an
  * optional system-prompt announcement. The browser half (./client) renders the
  * sidebar entry, the hosts tab, the environment-variable tab and the
  * scheduled-task tab.
@@ -38,7 +38,7 @@ const DEFAULTS = {
 const SECTION_ORDER = 160
 
 /** The four agent-tool names this plugin registers. */
-const TOOL_NAMES = ['qinglong_panels', 'qinglong_envs', 'qinglong_crons', 'qinglong_api']
+const TOOL_NAMES = ['cronops_panels', 'cronops_envs', 'cronops_crons', 'cronops_api']
 
 /**
  * Read one config key, tolerating the live reference a `volatile()` schema
@@ -69,7 +69,7 @@ function profileConfig(ctx) {
 }
 
 /** Model-facing announcement: what this plugin is, what it can do, its limits. */
-export const QINGLONG_GUIDANCE = '本机已安装 dsh-cronops 插件（DSH 定时面板控制台，支持青龙面板与呆呆面板）：侧边栏「定时面板」入口，页面只有三个页签——主机（面板连接，可选青龙/呆呆）、环境变量、定时任务。能力：面板连接存 $DSH_HOME/dsh-cronops.json（默认 ~/.dsh，0600）。青龙走 /open/* OpenAPI，应用凭据 client_id + client_secret（或直接粘 token），令牌 30 天自动续期；呆呆走 /api/v1/* OpenAPI，应用凭据 app_key + app_secret（或粘 token），令牌 24 小时自动续期。工具：qinglong_panels（列出/探活面板）、qinglong_envs（列/建/改/删/启停环境变量）、qinglong_crons（列/详情/建/改/运行/停止/启停/删除/日志/预览定时规则）、qinglong_api（通用桥：青龙的 subscriptions/configs/scripts/logs/dependencies/system/dashboard，呆呆的 logs/scripts/subscriptions/system）。限制：青龙的 /open/apps、/open/auth、/open/user、/open/update 与呆呆的 open-api、users、auth、mcp 一律拒绝（涉及凭据、账号与备份）；运行任务成功仅代表面板已受理触发，不代表脚本执行完成；写操作真实改动面板。用户提到「青龙 / 呆呆 / 定时任务 / 环境变量 / 面板」时即指本插件。'
+export const CRONOPS_GUIDANCE = '本机已安装 dsh-cronops 插件（DSH 定时面板控制台，支持青龙面板与呆呆面板）：侧边栏「定时面板」入口，页面只有三个页签——主机（面板连接，可选青龙/呆呆）、环境变量、定时任务。能力：面板连接存 $DSH_HOME/dsh-cronops.json（默认 ~/.dsh，0600）。青龙走 /open/* OpenAPI，应用凭据 client_id + client_secret（或直接粘 token），令牌 30 天自动续期；呆呆走 /api/v1/* OpenAPI，应用凭据 app_key + app_secret（或粘 token），令牌 24 小时自动续期。工具：cronops_panels（列出/探活面板）、cronops_envs（列/建/改/删/启停环境变量）、cronops_crons（列/详情/建/改/运行/停止/启停/删除/日志/预览定时规则）、cronops_api（通用桥：青龙的 subscriptions/configs/scripts/logs/dependencies/system/dashboard，呆呆的 logs/scripts/subscriptions/system）。限制：青龙的 /open/apps、/open/auth、/open/user、/open/update 与呆呆的 open-api、users、auth、mcp 一律拒绝（涉及凭据、账号与备份）；运行任务成功仅代表面板已受理触发，不代表脚本执行完成；写操作真实改动面板。用户提到「青龙 / 呆呆 / 定时任务 / 环境变量 / 面板」时即指本插件。'
 
 /** Process-wide mount guard (a bundle row and a standalone install may coexist). */
 const MOUNTED_KEY = Symbol.for('dsh-web.mounted-plugins')
@@ -130,7 +130,7 @@ export function apply(ctx, config) {
       disposeSection = ctx.systemPrompt.section({
         name: 'plugin:dsh-cronops',
         order: SECTION_ORDER,
-        text: visibleToolText(ctx.tools, TOOL_NAMES, QINGLONG_GUIDANCE),
+        text: visibleToolText(ctx.tools, TOOL_NAMES, CRONOPS_GUIDANCE),
       })
     }
     disposeRoutes = ctx.effect(() => {

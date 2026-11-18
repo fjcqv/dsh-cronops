@@ -15,7 +15,7 @@ DSH 的定时面板控制台：侧边栏（菜单栏）多一个「定时面板�
 2. **环境变量** —— 列表 / 搜索 / 新建 / 编辑 / 删除 / 启用 / 禁用（含批量）；呆呆额外显示「分组」与「重要」。
 3. **定时任务** —— 列表 / 搜索 / 分页 / 运行 / 停止 / 启用 / 禁用 / 删除 / 查看日志 / 新建 / 编辑，定时规则输入时实时预览未来触发时间。
 
-订阅、配置文件、脚本、日志、依赖、系统信息、仪表盘**不在页面里**，由智能体工具 `qinglong_api` 完成（青龙 `/open/*`、呆呆 `/api/v1/*`）。
+订阅、配置文件、脚本、日志、依赖、系统信息、仪表盘**不在页面里**，由智能体工具 `cronops_api` 完成（青龙 `/open/*`、呆呆 `/api/v1/*`）；工具名统一用 `cronops_` 前缀。
 
 ## 安装
 
@@ -92,12 +92,12 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 
 | 工具 | 作用 |
 |---|---|
-| `qinglong_panels` | `list` 列面板 / `test` 探活（连通性、版本、凭据与 scope 状态） |
-| `qinglong_envs` | `list` / `create` / `update` / `delete` / `enable` / `disable` |
-| `qinglong_crons` | `list` / `get` / `create` / `update` / `run` / `stop` / `enable` / `disable` / `delete` / `log` / `preview` |
-| `qinglong_api` | 通用桥：青龙 `/open/*`、呆呆 `/api/v1/*` |
+| `cronops_panels` | `list` 列面板 / `test` 探活（连通性、版本、凭据与 scope 状态） |
+| `cronops_envs` | `list` / `create` / `update` / `delete` / `enable` / `disable` |
+| `cronops_crons` | `list` / `get` / `create` / `update` / `run` / `stop` / `enable` / `disable` / `delete` / `log` / `preview` |
+| `cronops_api` | 通用桥：青龙 `/open/*`、呆呆 `/api/v1/*` |
 
-`qinglong_api` 拒绝：青龙 `/open/apps`、`/open/auth`、`/open/user`、`/open/update`；呆呆 `open-api`、`users`、`auth`、`mcp`（凭据、账号、备份与面板更新都不交给模型）。
+`cronops_api` 拒绝：青龙 `/open/apps`、`/open/auth`、`/open/user`、`/open/update`；呆呆 `open-api`、`users`、`auth`、`mcp`（凭据、账号、备份与面板更新都不交给模型）。
 
 ## 接口对照（驱动实际使用的部分）
 

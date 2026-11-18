@@ -65,41 +65,41 @@ async function main() {
       expect(Array.isArray(parameterViolations), `${tool.name}: parameters schema is accepted by the validator`)
     }
 
-    expectValidOutput(tools.qinglong_panels, await tools.qinglong_panels.execute({ action: 'list' }), 'qinglong_panels list')
-    expectValidOutput(tools.qinglong_panels, await tools.qinglong_panels.execute({ action: 'test', alias: 'mock' }), 'qinglong_panels test')
-    expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({ action: 'list' }), 'qinglong_envs list')
-    expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({
+    expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'list' }), 'cronops_panels list')
+    expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'test', alias: 'mock' }), 'cronops_panels test')
+    expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({ action: 'list' }), 'cronops_envs list')
+    expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({
       action: 'create',
       envs: [{ name: 'TOOL_VAR', value: 'v' }],
-    }), 'qinglong_envs create')
-    const envList = await tools.qinglong_envs.execute({ action: 'list', searchValue: 'TOOL_VAR' })
+    }), 'cronops_envs create')
+    const envList = await tools.cronops_envs.execute({ action: 'list', searchValue: 'TOOL_VAR' })
     const envId = envList.envs[0].id
-    expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({
+    expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({
       action: 'update',
       env: { id: envId, value: 'v2' },
-    }), 'qinglong_envs update')
-    expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({ action: 'disable', ids: [envId] }), 'qinglong_envs disable')
-    expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({ action: 'delete', ids: [envId] }), 'qinglong_envs delete')
+    }), 'cronops_envs update')
+    expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({ action: 'disable', ids: [envId] }), 'cronops_envs disable')
+    expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({ action: 'delete', ids: [envId] }), 'cronops_envs delete')
 
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'list' }), 'qinglong_crons list')
-    const created = await tools.qinglong_crons.execute({
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'list' }), 'cronops_crons list')
+    const created = await tools.cronops_crons.execute({
       action: 'create',
       cron: { name: 'tool-task', command: 'task t.js', schedule: '0 0 * * *' },
     })
-    expectValidOutput(tools.qinglong_crons, created, 'qinglong_crons create')
+    expectValidOutput(tools.cronops_crons, created, 'cronops_crons create')
     const cronId = created.result.id
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'get', id: cronId }), 'qinglong_crons get')
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'update', id: cronId, patch: { name: 'renamed' } }), 'qinglong_crons update')
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'run', ids: [cronId] }), 'qinglong_crons run')
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'stop', ids: [cronId] }), 'qinglong_crons stop')
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'log', id: cronId, limit: 4096 }), 'qinglong_crons log')
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'preview', schedule: '*/5 * * * *' }), 'qinglong_crons preview')
-    expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'delete', ids: [cronId] }), 'qinglong_crons delete')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'get', id: cronId }), 'cronops_crons get')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'update', id: cronId, patch: { name: 'renamed' } }), 'cronops_crons update')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'run', ids: [cronId] }), 'cronops_crons run')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'stop', ids: [cronId] }), 'cronops_crons stop')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'log', id: cronId, limit: 4096 }), 'cronops_crons log')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'preview', schedule: '*/5 * * * *' }), 'cronops_crons preview')
+    expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'delete', ids: [cronId] }), 'cronops_crons delete')
 
-    expectValidOutput(tools.qinglong_api, await tools.qinglong_api.execute({
+    expectValidOutput(tools.cronops_api, await tools.cronops_api.execute({
       method: 'GET',
       path: '/dependencies',
-    }), 'qinglong_api allowed call')
+    }), 'cronops_api allowed call')
 
     // ---- daidai panel: same four tools, different wire contract
     const dd = await startDaidaiMock()
@@ -110,32 +110,32 @@ async function main() {
         baseUrl: dd.baseUrl,
         auth: { kind: 'open', appKey: 'dd-key', appSecret: 'dd-secret' },
       })
-      expectValidOutput(tools.qinglong_panels, await tools.qinglong_panels.execute({ action: 'list' }), 'daidai panels list')
-      expectValidOutput(tools.qinglong_panels, await tools.qinglong_panels.execute({ action: 'test', alias: 'dd' }), 'daidai panels test')
-      expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({ action: 'list', alias: 'dd' }), 'daidai envs list')
-      expectValidOutput(tools.qinglong_envs, await tools.qinglong_envs.execute({
+      expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'list' }), 'daidai panels list')
+      expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'test', alias: 'dd' }), 'daidai panels test')
+      expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({ action: 'list', alias: 'dd' }), 'daidai envs list')
+      expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({
         action: 'create',
         alias: 'dd',
         envs: [{ name: 'TOOL_DD', value: 'v' }],
       }), 'daidai envs create')
-      expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'list', alias: 'dd' }), 'daidai crons list')
-      const ddCreated = await tools.qinglong_crons.execute({
+      expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'list', alias: 'dd' }), 'daidai crons list')
+      const ddCreated = await tools.cronops_crons.execute({
         action: 'create',
         alias: 'dd',
         cron: { name: 'tool-dd', command: 'task dd.js', schedule: '0 0 * * *' },
       })
-      expectValidOutput(tools.qinglong_crons, ddCreated, 'daidai crons create')
+      expectValidOutput(tools.cronops_crons, ddCreated, 'daidai crons create')
       const ddId = ddCreated.result.data.id
-      expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'run', alias: 'dd', ids: [ddId] }), 'daidai crons run')
-      expectValidOutput(tools.qinglong_crons, await tools.qinglong_crons.execute({ action: 'log', alias: 'dd', id: ddId }), 'daidai crons log')
-      expectValidOutput(tools.qinglong_api, await tools.qinglong_api.execute({
+      expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'run', alias: 'dd', ids: [ddId] }), 'daidai crons run')
+      expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'log', alias: 'dd', id: ddId }), 'daidai crons log')
+      expectValidOutput(tools.cronops_api, await tools.cronops_api.execute({
         method: 'GET',
         path: '/tasks',
         alias: 'dd',
       }), 'daidai api allowed call')
       let ddDenied = false
       try {
-        await tools.qinglong_api.execute({ method: 'GET', path: '/open-api/apps', alias: 'dd' })
+        await tools.cronops_api.execute({ method: 'GET', path: '/open-api/apps', alias: 'dd' })
       } catch (error) {
         ddDenied = /拒绝访问/.test(String(error.message))
       }
@@ -146,11 +146,11 @@ async function main() {
 
     let denied = false
     try {
-      await tools.qinglong_api.execute({ method: 'GET', path: '/apps' })
+      await tools.cronops_api.execute({ method: 'GET', path: '/apps' })
     } catch (error) {
       denied = /拒绝访问/.test(String(error.message))
     }
-    expect(denied, 'qinglong_api refuses /apps')
+    expect(denied, 'cronops_api refuses /apps')
   } finally {
     await mock.close()
     rmSync(dir, { recursive: true, force: true })
