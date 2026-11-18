@@ -59,8 +59,6 @@ window.__ModuleLoader__.load({
       'common.create': '新增',
       'common.search': '搜索',
       'common.none': '-',
-      'common.copy': '复制',
-      'common.copied': '已复制',
       'current.panel': '当前面板：{alias} · {url}',
       'common.enabled': '启用',
       'common.disabled': '禁用',
@@ -99,6 +97,7 @@ window.__ModuleLoader__.load({
       'panels.add': '新增面板',
       'panels.testAll': '测试全部',
       'panels.col.alias': '别名',
+      'panels.col.kind': '类型',
       'panels.col.url': '面板地址',
       'panels.col.auth': '凭据',
       'panels.col.status': '状态',
@@ -207,8 +206,6 @@ window.__ModuleLoader__.load({
       'common.create': 'New',
       'common.search': 'Search',
       'common.none': '-',
-      'common.copy': 'Copy',
-      'common.copied': 'Copied',
       'current.panel': 'Panel: {alias} · {url}',
       'common.enabled': 'Enabled',
       'common.disabled': 'Disabled',
@@ -247,6 +244,7 @@ window.__ModuleLoader__.load({
       'panels.add': 'New panel',
       'panels.testAll': 'Test all',
       'panels.col.alias': 'Alias',
+      'panels.col.kind': 'Type',
       'panels.col.url': 'Base URL',
       'panels.col.auth': 'Credential',
       'panels.col.status': 'Status',
@@ -892,8 +890,8 @@ window.__ModuleLoader__.load({
         return h('tr', { key: panel.alias },
           h('td', null,
             h('span', { className: 'dq-cellName' }, panel.alias),
-            h('span', { className: 'dq-badge' }, panel.kind === 'daidai' ? tt('panels.kind.daidai') : tt('panels.kind.qinglong')),
             panel.isDefault ? h('span', { className: 'dq-badge' }, tt('panels.default')) : null),
+          h('td', { className: 'dq-cellMuted' }, panel.kind === 'daidai' ? tt('panels.kind.daidai') : tt('panels.kind.qinglong')),
           h('td', { className: 'dq-mono dq-cellEllipsis', title: panel.baseUrl }, panel.baseUrl),
           h('td', null, scopeChips(test, panel.kind)),
           h('td', null,
@@ -915,14 +913,16 @@ window.__ModuleLoader__.load({
       const table = h('div', { className: 'dq-tableWrap' },
         h('table', { className: 'dq-table dq-tablePanels' },
           h('colgroup', null,
-            h('col', { style: { width: 116 } }),
-            h('col', { style: { width: 164 } }),
-            h('col', { style: { width: 300 } }),
-            h('col', { style: { width: 176 } }),
-            h('col', { style: { width: 224 } })),
+            h('col', { style: { width: 104 } }),
+            h('col', { style: { width: 92 } }),
+            h('col', { style: { width: 160 } }),
+            h('col', { style: { width: 292 } }),
+            h('col', { style: { width: 172 } }),
+            h('col', { style: { width: 220 } })),
           h('thead', null,
             h('tr', null,
               h('th', null, tt('panels.col.alias')),
+              h('th', null, tt('panels.col.kind')),
               h('th', null, tt('panels.col.url')),
               h('th', null, tt('panels.col.scopes')),
               h('th', null, tt('panels.col.status')),
@@ -1023,7 +1023,6 @@ window.__ModuleLoader__.load({
       const [search, setSearch] = useState('')
       const [selected, setSelected] = useState([])
       const [dialog, setDialog] = useState(undefined)
-      const [copied, setCopied] = useState('')
 
       // alias + revision are the refetch keys: switching the header picker or
       // reloading the panel list both land here as a changed primitive.
@@ -1082,28 +1081,11 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const copy = async value => {
-        try {
-          await navigator.clipboard.writeText(value)
-          setCopied(String(value))
-          setTimeout(() => setCopied(''), 1200)
-        } catch {
-          // Clipboard unavailable (insecure context): the value stays selectable.
-        }
-      }
-
       const rowsView = rows.map(row => {
         const value = String(row.value ?? '')
         const disabled = envDisabled(row)
         const valueCell = h('td', null,
-          h('div', { className: 'dq-mono dq-cellWrap dq-cellScroll', title: value }, value === '' ? '—' : value),
-          value === ''
-            ? null
-            : h('button', {
-              type: 'button',
-              className: 'dq-linkBtn',
-              onClick: () => { void copy(value) },
-            }, copied === value ? tt('common.copied') : tt('common.copy')))
+          h('div', { className: 'dq-mono dq-cellWrap dq-cellScroll', title: value }, value === '' ? '—' : value))
         const actions = h('div', { className: 'dq-actions' },
           h(Button, { variant: 'ghost', onClick: () => setDialog({ mode: 'edit', env: row }) }, tt('common.edit')),
           h(Button, { variant: 'ghost', onClick: () => act(disabled ? 'enable' : 'disable', [row.id]) },
