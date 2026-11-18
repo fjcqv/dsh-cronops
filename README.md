@@ -132,6 +132,35 @@ node scripts/mock-daidai.mjs 5798     # 假呆呆（app_key=dd-key / dd-secret�
 
 真实面板也验证过：青龙 **2.24.0** 探活 9 个 scope 全 `ok`；呆呆 **3.4.4** 探活 7 个 scope 全 `ok`，`cron/parse` 返回真实的下 5 次触发时间，并跑过一次可逆写闭环（环境变量 建→改→禁用→删，任务 建→改→运行→读 `latest-log`→删，通用桥读 `/scripts` 成功、`/open-api` 被拒）。
 
+## 发布（维护者，Trusted Publishing）
+
+首个版本 `dsh-cronops@0.1.0` 已手动发布到 npm。之后由 GitHub Actions 用 **Trusted Publishing（OIDC）** 发布——不需要 npm token，也不会再问 2FA。
+
+**一次性授权**：npmjs 包页面 → Settings → **Trusted Publisher** → GitHub Actions，填写
+
+| 字段 | 值 |
+|---|---|
+| Organization or user | `fjcqv` |
+| Repository | `dsh-cronops` |
+| Workflow filename | `publish.yml` |
+| Environment | 留空 |
+| Allowed actions | `npm publish` |
+
+**发版流程**
+
+```bash
+# 1) 改版本号并提交
+npm version patch --no-git-tag-version     # 或手动改 package.json
+git commit -am "release: v0.1.1" && git push
+# 2) 打 tag 并推送
+git tag v0.1.1 && git push origin v0.1.1
+# 3) 在 GitHub 创建 Release（tag 选 v0.1.1，点 Publish release）
+```
+
+Release 一发布，`.github/workflows/publish.yml` 就会：校验 `tag == package.json version` → 跑 `scripts/selftest.mjs` → 该版本已存在则跳过 → `npm publish --provenance --access public`。npm 包页面会显示 provenance 徽标，证明产物来自这个仓库的这次运行。
+
+也可以不走 Release，在 Actions 页对 `publish` 工作流点 **Run workflow** 手动触发（同样会做版本校验与重复发布检查）。
+
 ## 目录
 
 ```
@@ -147,6 +176,7 @@ lib/loopback.js     回环信任栅栏
 lib/http.js         有界 JSON 读写
 client.js           浏览器半：菜单栏行、三页签、类型/凭据表单、样式、i18n
 scripts/            mock 面板 + 自测 + 工具契约检查
+.github/workflows/publish.yml  npm Trusted Publishing（OIDC，无 token/OTP）
 locale/{zh,en}.json 插件管理页展示文案
 icon.svg            插件图标
 ```
