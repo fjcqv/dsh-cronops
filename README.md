@@ -134,7 +134,7 @@ node scripts/mock-daidai.mjs 5798     # 假呆呆（app_key=dd-key / dd-secret�
 
 ## 发布（维护者，Trusted Publishing）
 
-首个版本 `dsh-cronops@0.1.0` 已手动发布到 npm。之后由 GitHub Actions 用 **Trusted Publishing（OIDC）** 发布——不需要 npm token，也不会再问 2FA。
+`dsh-cronops@0.1.0` 是手动发布的；从 `0.1.1` 起由 GitHub Actions 用 **Trusted Publishing（OIDC）** 发布——不需要 npm token，也不会再问 2FA。
 
 **一次性授权**：npmjs 包页面 → Settings → **Trusted Publisher** → GitHub Actions，填写
 
