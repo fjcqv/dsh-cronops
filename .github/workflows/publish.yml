@@ -4,6 +4,10 @@ name: publish
 # token, no one-time password. The npmjs side must authorize this exact
 # workflow once — see "发布（Trusted Publishing）" in README.md.
 on:
+  # A tag push is the primary trigger: it works without creating a Release and
+  # it is what `git push origin vX.Y.Z` does.
+  push:
+    tags: ['v*']
   release:
     types: [published]
   workflow_dispatch:
@@ -43,12 +47,16 @@ jobs:
           set -euo pipefail
           VERSION="$(node -p "require('./package.json').version")"
           echo "package version: $VERSION"
+          echo "npm: $(npm --version), registry: $(npm config get registry)"
+          TAG=""
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
-            if [ "v$VERSION" != "$TAG" ]; then
-              echo "release tag $TAG does not match package version $VERSION" >&2
-              exit 1
-            fi
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ github.ref_name }}"
+          fi
+          if [ -n "$TAG" ] && [ "v$VERSION" != "$TAG" ]; then
+            echo "tag $TAG does not match package version $VERSION" >&2
+            exit 1
           fi
           if npm view "dsh-cronops@$VERSION" version >/dev/null 2>&1; then
             echo "dsh-cronops@$VERSION is already published — skipping"
