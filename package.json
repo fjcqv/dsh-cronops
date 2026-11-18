@@ -1,7 +1,6 @@
 {
   "name": "dsh-cronops",
   "version": "0.1.0",
-  "private": true,
   "description": "Cron/task panel console for the dsh web GUI (青龙面板 / 呆呆面板): one sidebar page for panel connections, environment variables and scheduled tasks over each panel’s OpenAPI app credential, plus agent tools for every other resource.",
   "type": "module",
   "icon": "icon.svg",
@@ -61,5 +60,9 @@
   "bugs": {
     "url": "https://github.com/fjcqv/dsh-cronops/issues"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
 }

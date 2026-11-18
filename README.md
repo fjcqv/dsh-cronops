@@ -122,8 +122,8 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 ## 验证
 
 ```bash
-node scripts/selftest.mjs        # 主机半：两种面板的 mock + 全部路由/错误分支（84 项断言）
-node scripts/check-tools.mjs     # 工具输出契约（宿主真实 JSON Schema 校验器，63 项断言）
+node scripts/selftest.mjs        # 主机半：两种面板的 mock + 全部路由/错误分支（93 项断言）
+node scripts/check-tools.mjs     # 工具输出契约（宿主真实 JSON Schema 校验器，66 项断言）
 node scripts/mock-qinglong.mjs 5799   # 假青龙（client_id=mock-client / mock-secret）
 node scripts/mock-daidai.mjs 5798     # 假呆呆（app_key=dd-key / dd-secret）
 ```
