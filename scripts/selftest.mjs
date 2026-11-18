@@ -257,6 +257,14 @@ async function main() {
         body: { alias: 'mock', method: 'GET', path: '/nope' },
       })
       expect(unknown.status === 400 && /不支持/.test(unknown.json.error), 'refuses an unknown resource', unknown.json)
+
+      // `/health` needs a panel-side scope an application cannot hold, so the
+      // bridge now rejects it up-front instead of forwarding a 403.
+      const health = await call(server.baseUrl, '/api/dsh-cronops/request', {
+        method: 'POST',
+        body: { alias: 'mock', method: 'GET', path: '/health' },
+      })
+      expect(health.status === 400 && /不支持/.test(health.json.error), 'refuses /health up-front', health.json)
     })
 
     await section('failure branches: unknown panel, bad credential, unreachable host', async () => {

@@ -65,7 +65,11 @@ async function main() {
       expect(Array.isArray(parameterViolations), `${tool.name}: parameters schema is accepted by the validator`)
     }
 
-    expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'list' }), 'cronops_panels list')
+    const panelList = await tools.cronops_panels.execute({ action: 'list' })
+    expectValidOutput(tools.cronops_panels, panelList, 'cronops_panels list')
+    const panelText = tools.cronops_panels.output.render({}, panelList)[0].text
+    expect(/appKey/.test(panelText) && panelText.includes('mock-client'),
+      'panel list renders the appKey column', panelText)
     expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'test', alias: 'mock' }), 'cronops_panels test')
     expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({ action: 'list' }), 'cronops_envs list')
     expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({
@@ -143,6 +147,23 @@ async function main() {
     } finally {
       await dd.close()
     }
+
+    // 404 → path hint; 403 → scope hint
+    let notFoundHint = ''
+    try {
+      await tools.cronops_api.execute({ method: 'GET', path: '/subscriptions/unknown-endpoint' })
+    } catch (error) {
+      notFoundHint = String(error.message)
+    }
+    expect(/路径不存在/.test(notFoundHint) && /常用/.test(notFoundHint), '404 carries the path cheatsheet', notFoundHint)
+
+    let scopeHint = ''
+    try {
+      await tools.cronops_api.execute({ method: 'GET', path: '/subscriptions/denied' })
+    } catch (error) {
+      scopeHint = String(error.message)
+    }
+    expect(/scope/.test(scopeHint), '403 explains the missing scope', scopeHint)
 
     let denied = false
     try {

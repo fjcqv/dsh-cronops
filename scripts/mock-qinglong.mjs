@@ -126,6 +126,13 @@ export async function startMock(options = {}) {
     if (path === '/open/subscriptions') {
       return send(res, { code: 200, data: [] })
     }
+    if (path === '/open/subscriptions/denied') {
+      // Allowed segment, but the app lacks the scope: exercises the 403 hint.
+      return send(res, { code: 403, message: '暂无权限' })
+    }
+    if (path === '/open/unknown-endpoint') {
+      return businessFailure(res, 'route not found', 404)
+    }
     if (path === '/open/configs/files') {
       return send(res, { code: 200, data: [] })
     }

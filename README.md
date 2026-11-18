@@ -112,6 +112,13 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 
 更新语义：青龙的 `PUT` 不做读后合并（env 须带 `id/name/value`、cron 须带 `command/schedule`），驱动先 `GET` 再合并；呆呆接受部分字段更新，直接 PATCH。
 
+### 通用桥的常用路径
+
+- **青龙**：`/envs`、`/crons`、`/crons/:id/log`、`/logs/detail`（**必填 `path` 与 `file`**）、`/subscriptions`、`/scripts`、`/system`、`/dashboard/overview`。
+  应用凭据**不可用** `/health`（需要面板侧健康 scope，任何应用都授予不了），所以桥会直接拒绝它。
+- **呆呆**：`/tasks`、`/envs`、`/logs`、`/scripts`、`/subscriptions`、`/system/info`（系统信息**不是** `/system`）、`/system/dashboard`（仪表盘**不是** `/dashboard`）、`/system/backups`。
+- 走错路径时工具会在面板原始报错后面补一句「路径不存在，常用：…」；遇到 403 会补「该资源不在应用凭据可用的 scope 内」。
+
 ## 验证
 
 ```bash
