@@ -165,6 +165,25 @@ async function main() {
     }
     expect(/scope/.test(scopeHint), '403 explains the missing scope', scopeHint)
 
+    // Retired route (410) and celebrate validation failures must carry the
+    // exact retry shape.
+    let retiredHint = ''
+    try {
+      await tools.cronops_api.execute({ method: 'GET', path: '/scripts/meituan.js' })
+    } catch (error) {
+      retiredHint = String(error.message)
+    }
+    expect(/已下线/.test(retiredHint) && /\/scripts\/detail\?path=/.test(retiredHint),
+      '410 restates the replacement call', retiredHint)
+
+    let validationHint = ''
+    try {
+      await tools.cronops_api.execute({ method: 'GET', path: '/scripts/detail', query: { path: 'x.js' } })
+    } catch (error) {
+      validationHint = String(error.message)
+    }
+    expect(/file/.test(validationHint), 'validation failure names the missing field', validationHint)
+
     let denied = false
     try {
       await tools.cronops_api.execute({ method: 'GET', path: '/apps' })

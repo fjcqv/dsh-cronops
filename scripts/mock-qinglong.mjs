@@ -139,6 +139,17 @@ export async function startMock(options = {}) {
     if (path === '/open/scripts') {
       return send(res, { code: 200, data: [] })
     }
+    if (path === '/open/scripts/detail') {
+      // The real endpoint requires `file`; the panel answers a celebrate error.
+      if (url.searchParams.get('file') === null) {
+        return businessFailure(res, 'Validation failed')
+      }
+      return send(res, { code: 200, data: `// ${url.searchParams.get('file')}\n` })
+    }
+    if (/^\/open\/scripts\/[^/]+$/.test(path)) {
+      // Retired route: qinglong answers 410 with a replacement hint.
+      return businessFailure(res, '接口已下线，请使用 /scripts/detail 接口', 410)
+    }
     if (path === '/open/logs') {
       return send(res, { code: 200, data: [] })
     }
