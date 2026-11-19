@@ -212,6 +212,11 @@ export async function startMock(options = {}) {
       for (const row of state.envs) if (ids.includes(row.id)) row.status = status
       return send(res, { code: 200, data: ids })
     }
+    if (path === '/open/envs/detail') {
+      // The real panel validates `:id` as a number, so the string "detail"
+      // fails celebrate with a bare message.
+      return businessFailure(res, 'Validation failed')
+    }
     const envMatch = path.match(/^\/open\/envs\/(\d+)$/)
     if (envMatch !== null && method === 'GET') {
       const row = state.envs.find(item => item.id === Number(envMatch[1]))

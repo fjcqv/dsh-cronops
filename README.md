@@ -66,7 +66,7 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 | `cronops_crons` | `list` / `get` / `create` / `update` / `run` / `stop` / `enable` / `disable` / `delete` / `log` / `preview` |
 | `cronops_api` | 通用桥：青龙 `/open/*`、呆呆 `/api/v1/*` |
 
-`cronops_api` 只放行业务资源：青龙 `/open/apps|auth|user|update`、呆呆 `open-api|users|auth|mcp` 一律拒绝（凭据、账号、备份、面板更新不交给模型）。路径走错、接口已下线（410）或缺少必填参数时会附加可操作提示——例如青龙读脚本是 `GET /scripts/detail?path=<目录，可为空>&file=<文件名>`，保存是 `PUT /scripts` `{filename,path,content}`；呆呆读脚本是 `GET /scripts/content?path=<文件>`。
+`cronops_api` 只放行业务资源：青龙 `/open/apps|auth|user|update`、呆呆 `open-api|users|auth|mcp` 一律拒绝（凭据、账号、备份、面板更新不交给模型）。路径走错、接口已下线（410）或缺少必填参数时会附加可操作提示，失败时还会附一行该资源的用法清单（例如 `GET /envs/<id>`，没有 `/envs/detail`）——例如青龙读脚本是 `GET /scripts/detail?path=<目录，可为空>&file=<文件名>`，保存是 `PUT /scripts` `{filename,path,content}`；呆呆读脚本是 `GET /scripts/content?path=<文件>`。
 
 ## Configuration
 

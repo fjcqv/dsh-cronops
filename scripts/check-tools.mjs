@@ -184,6 +184,16 @@ async function main() {
     }
     expect(/file/.test(validationHint), 'validation failure names the missing field', validationHint)
 
+    // A wrong sub-path on a real resource gets that resource's cheatsheet.
+    let resourceHintText = ''
+    try {
+      await tools.cronops_api.execute({ method: 'GET', path: '/envs/detail', query: { id: 65 } })
+    } catch (error) {
+      resourceHintText = String(error.message)
+    }
+    expect(/该资源的用法/.test(resourceHintText) && /\/envs\/<id>/.test(resourceHintText),
+      'wrong env sub-path returns the envs cheatsheet', resourceHintText)
+
     let denied = false
     try {
       await tools.cronops_api.execute({ method: 'GET', path: '/apps' })
