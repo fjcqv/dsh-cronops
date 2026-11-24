@@ -27,6 +27,8 @@ const state = {
     { id: 1, name: 'demo', command: 'task demo.js', schedule: '0 0 * * *', status: 1, isDisabled: 0, labels: [], last_execution_time: 1793000000, log_path: 'demo' },
     { id: 2, name: 'disabled', command: 'task off.js', schedule: '*/5 * * * *', status: 2, isDisabled: 1, labels: ['demo'], last_execution_time: null, log_path: 'off' },
   ],
+  /** script path → stored text, for the script read/write round-trip. */
+  scripts: new Map([['/seeded.js', '// seeded\n']]),
   nextEnvId: 3,
   nextCronId: 3,
   /** every `/open/dependencies` request this process served: { type, search } */
@@ -137,14 +139,39 @@ export async function startMock(options = {}) {
       return send(res, { code: 200, data: [] })
     }
     if (path === '/open/scripts') {
-      return send(res, { code: 200, data: [] })
+      // Mirror the real panel: PUT updates an existing file only (404 脚本不存在
+      // for a new one), POST creates, DELETE removes.
+      if (method === 'PUT' || method === 'POST' || method === 'DELETE') {
+        const body = await readBody(req)
+        if (typeof body?.filename !== 'string' || body.filename === '') {
+          return businessFailure(res, 'Validation failed')
+        }
+        const key = `${body.path ?? ''}/${body.filename}`
+        if (method === 'PUT' && !state.scripts.has(key)) {
+          return businessFailure(res, '脚本不存在', 404)
+        }
+        if (method === 'DELETE') {
+          state.scripts.delete(key)
+          return send(res, { code: 200 })
+        }
+        state.scripts.set(key, String(body.content ?? ''))
+        return send(res, { code: 200 })
+      }
+      return send(res, { code: 200, data: [...state.scripts.keys()] })
+    }
+    if (path === '/open/scripts/run') {
+      const body = await readBody(req)
+      if (typeof body?.filename !== 'string') return businessFailure(res, 'Validation failed')
+      return send(res, { code: 200, data: `运行 ${body.filename}` })
     }
     if (path === '/open/scripts/detail') {
       // The real endpoint requires `file`; the panel answers a celebrate error.
       if (url.searchParams.get('file') === null) {
         return businessFailure(res, 'Validation failed')
       }
-      return send(res, { code: 200, data: `// ${url.searchParams.get('file')}\n` })
+      const file = url.searchParams.get('file')
+      const key = `${url.searchParams.get('path') ?? ''}/${file}`
+      return send(res, { code: 200, data: state.scripts.get(key) ?? `// ${file}\n` })
     }
     if (/^\/open\/scripts\/[^/]+$/.test(path)) {
       // Retired route: qinglong answers 410 with a replacement hint.

@@ -16,6 +16,7 @@ import { validateJsonSchemaValue, assertSupportedJsonSchema } from '/home/wadd/.
 import { PanelEngine } from '../lib/engine.js'
 import { PanelStore } from '../lib/store.js'
 import { buildTools } from '../lib/tools.js'
+import { writeFileSync } from 'node:fs'
 import { startDaidaiMock } from './mock-daidai.mjs'
 import { startMock } from './mock-qinglong.mjs'
 
@@ -55,7 +56,8 @@ async function main() {
   const tools = Object.fromEntries(buildTools(engine, store).map(tool => [tool.name, tool]))
 
   try {
-    expect(Object.keys(tools).length === 4, 'four tools are built', Object.keys(tools))
+    expect(Object.keys(tools).length === 5, 'five tools are built', Object.keys(tools))
+    expect(typeof tools.cronops_script?.execute === 'function', 'cronops_script is registered', Object.keys(tools))
 
     for (const tool of Object.values(tools)) {
       expect(typeof tool.execute === 'function' && typeof tool.description === 'string' && tool.description.length > 20,
@@ -68,8 +70,11 @@ async function main() {
     const panelList = await tools.cronops_panels.execute({ action: 'list' })
     expectValidOutput(tools.cronops_panels, panelList, 'cronops_panels list')
     const panelText = tools.cronops_panels.output.render({}, panelList)[0].text
-    expect(/appKey/.test(panelText) && panelText.includes('mock-client'),
-      'panel list renders the appKey column', panelText)
+    // The column must not read like a token: models copied the app key into an
+    // Authorization header and got 401 (session-9f82a270).
+    expect(/client_id\/app_key/.test(panelText) && panelText.includes('mock-client')
+      && /不是令牌/.test(panelText),
+      'panel list labels the key as a client id and warns it is not a token', panelText)
     expectValidOutput(tools.cronops_panels, await tools.cronops_panels.execute({ action: 'test', alias: 'mock' }), 'cronops_panels test')
     expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({ action: 'list' }), 'cronops_envs list')
     expectValidOutput(tools.cronops_envs, await tools.cronops_envs.execute({
@@ -183,6 +188,34 @@ async function main() {
       validationHint = String(error.message)
     }
     expect(/file/.test(validationHint), 'validation failure names the missing field', validationHint)
+
+    // ---- cronops_script: the push-a-local-file path (session-9f82a270 failed
+    // here because the model hand-built curl instead of using a tool).
+    const localFile = join(dir, 'push.js')
+    writeFileSync(localFile, '// pushed by check-tools\nconsole.log(1)\n')
+    const written = await tools.cronops_script.execute({ action: 'write', localPath: localFile, file: 'push.js' })
+    expectValidOutput(tools.cronops_script, written, 'cronops_script write')
+    expect(written.result.verified === true && written.result.remoteSha === written.result.localSha,
+      'cronops_script write verifies by reading back', JSON.stringify(written.result))
+    expect(written.result.from === localFile, 'cronops_script write keeps the local origin', String(written.result.from))
+
+    // Second write to the same path is an update: PUT succeeds, and the mock
+    // rejects PUT for a missing file, so this also proves the POST fallback.
+    writeFileSync(localFile, '// updated\n')
+    const updated = await tools.cronops_script.execute({ action: 'write', localPath: localFile, file: 'push.js' })
+    expect(updated.result.verified === true, 'cronops_script write updates an existing file', JSON.stringify(updated.result))
+
+    const readBack = await tools.cronops_script.execute({ action: 'read', file: 'push.js' })
+    expectValidOutput(tools.cronops_script, readBack, 'cronops_script read')
+    expect(readBack.result.content.includes('// updated'), 'cronops_script read returns the stored text', readBack.result.content)
+
+    const listed = await tools.cronops_script.execute({ action: 'list', path: '' })
+    expectValidOutput(tools.cronops_script, listed, 'cronops_script list')
+    expect(Array.isArray(listed.result.scripts), 'cronops_script list returns the tree', JSON.stringify(listed.result.scripts))
+
+    const ran = await tools.cronops_script.execute({ action: 'run', file: 'push.js' })
+    expectValidOutput(tools.cronops_script, ran, 'cronops_script run')
+    expect(ran.result.triggered === true, 'cronops_script run reports the trigger', JSON.stringify(ran.result))
 
     // A wrong sub-path on a real resource gets that resource's cheatsheet.
     let resourceHintText = ''

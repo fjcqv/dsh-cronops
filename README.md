@@ -17,7 +17,7 @@
 - **三个页签**：主机（面板连接）、环境变量、定时任务——与「定时面板」这个产品形态一一对应。
 - **双驱动**：青龙与呆呆各一套驱动，字段与状态词归一后 UI 只认一套（任务状态、环境变量的分组/重要等）。
 - **权限探测落库**：点「测试」才探测，结果写进面板记录（版本、凭据状态、每个 scope 的有/无/超时）；主机表按中文展示，切换面板不发请求。
-- **四个 agent 工具**：`cronops_panels` / `cronops_envs` / `cronops_crons` / `cronops_api`，与页面共用同一实现，页面能做的 agent 也能做。
+- **五个 agent 工具**：`cronops_panels` / `cronops_envs` / `cronops_crons` / `cronops_script` / `cronops_api`，与页面共用同一实现，页面能做的 agent 也能做。
 - **本机回环栅栏**：`/api/dsh-cronops/*` 只接受本机回环直连（socket + Host + 同源标记），反向代理需显式开启。
 - **不打扰的反馈**：成功只在「运行任务」时提示一次（2.5 秒自动消失），失败常驻；任务页 5 秒静默轮询状态。
 
@@ -64,9 +64,10 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 | `cronops_panels` | `list` 列面板 / `test` 探活并落库（连通性、版本、凭据、scope） |
 | `cronops_envs` | `list` / `create` / `update` / `delete` / `enable` / `disable` |
 | `cronops_crons` | `list` / `get` / `create` / `update` / `run` / `stop` / `enable` / `disable` / `delete` / `log` / `preview` |
+| `cronops_script` | 脚本读写：list 列目录、read 读正文、write 把本地文件推上面板并回读校验 sha256、run 触发执行（青龙按需 POST 新建 / PUT 覆盖） |
 | `cronops_api` | 通用桥：青龙 `/open/*`、呆呆 `/api/v1/*` |
 
-`cronops_api` 只放行业务资源：青龙 `/open/apps|auth|user|update`、呆呆 `open-api|users|auth|mcp` 一律拒绝（凭据、账号、备份、面板更新不交给模型）。路径走错、接口已下线（410）或缺少必填参数时会附加可操作提示，失败时还会附一行该资源的用法清单（例如 `GET /envs/<id>`，没有 `/envs/detail`）——例如青龙读脚本是 `GET /scripts/detail?path=<目录，可为空>&file=<文件名>`，保存是 `PUT /scripts` `{filename,path,content}`；呆呆读脚本是 `GET /scripts/content?path=<文件>`。
+`cronops_api` 只放行业务资源：青龙 `/open/apps|auth|user|update`、呆呆 `open-api|users|auth|mcp` 一律拒绝（凭据、账号、备份、面板更新不交给模型）。路径走错、接口已下线（410）或缺少必填参数时会附加可操作提示，失败时还会附一行该资源的用法清单（例如 `GET /envs/<id>`，没有 `/envs/detail`）——例如青龙读脚本是 `GET /scripts/detail?path=<目录，可为空>&file=<文件名>`，保存是 `POST /scripts` 新建 / `PUT /scripts` 覆盖 `{filename,path,content}`（`cronops_script write` 自动选）；呆呆读脚本是 `GET /scripts/content?path=<文件>`。
 
 ## Configuration
 
