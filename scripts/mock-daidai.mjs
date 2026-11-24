@@ -24,6 +24,7 @@ const state = {
     { id: 1, name: 'DD_ENV', value: 'hello', remarks: 'seeded', enabled: true, group: 'demo', important: false, position: 10000, sort_order: 0 },
     { id: 2, name: 'DD_OFF', value: 'off', remarks: '', enabled: false, group: '', important: true, position: 10000, sort_order: 0 },
   ],
+  scripts: {},
   tasks: [
     { id: 1, name: 'demo', command: 'task demo.js', cron_expression: '0 0 * * *', status: 1, enabled: true, labels: ['demo'], last_run_at: '2026-11-16T10:00:00Z', last_run_status: 0 },
     { id: 2, name: 'disabled', command: 'task off.js', cron_expression: '*/5 * * * *', status: 0, enabled: false, labels: [], last_run_at: null, last_run_status: null },
@@ -117,7 +118,29 @@ export async function startDaidaiMock(options = {}) {
 
     // ------------------------------------------------------------- probes
     if (path === '/api/v1/logs') return send(res, 200, paged([], url))
-    if (path === '/api/v1/scripts') return send(res, 200, { data: [] })
+    // A flat tree that prefix-matches `path`, exactly like the real panel: a
+    // listing for `helloworld` also returns root-level files.
+    if (path === '/api/v1/scripts' && method === 'GET') {
+      const dir = url.searchParams.get('path') ?? ''
+      const files = Object.keys(state.scripts)
+      const rows = dir === '' ? files : [...new Set([...files, 'notify.py', 'sendNotify.js'])].filter(name => name.startsWith(dir))
+      return send(res, 200, { data: rows })
+    }
+    if (path === '/api/v1/scripts/content') {
+      if (method === 'GET') {
+        const file = url.searchParams.get('path') ?? ''
+        if (state.scripts[file] === undefined) return send(res, 404, { error: '脚本不存在' })
+        return send(res, 200, { data: { content: state.scripts[file], path: file, binary: false, is_binary: false }, message: 'ok' })
+      }
+      if (method === 'PUT') {
+        const body = await readBody(req)
+        if (typeof body.path !== 'string' || typeof body.content !== 'string') {
+          return send(res, 400, { error: 'path 与 content 必填' })
+      }
+        state.scripts[body.path] = body.content
+        return send(res, 200, { data: { path: body.path, binary: false, is_binary: false }, message: '保存成功' })
+      }
+    }
     if (path === '/api/v1/subscriptions') return send(res, 200, paged([], url))
     if (path === '/api/v1/system/info') return send(res, 200, { data: { version: '3.4.4-mock' } })
     if (path === '/api/v1/system/backups') return send(res, 200, { data: [] })
@@ -214,6 +237,11 @@ export async function startDaidaiMock(options = {}) {
       if (expression === '') return send(res, 400, { error: '请求参数错误' })
       if (expression.split(/\s+/).length < 5) {
         return send(res, 200, { data: { is_valid: false, error: '表达式无效' } })
+      }
+      // A date the calendar never reaches: the real panel accepts the shape and
+      // simply reports no future run.
+      if (/^0 0 30 2 \*$/.test(expression)) {
+        return send(res, 200, { data: { is_valid: true, description: '每年 2 30日 00:00', next_run_times: [], format: '标准格式 (5位)' } })
       }
       const now = Date.now()
       return send(res, 200, {

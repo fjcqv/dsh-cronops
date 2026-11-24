@@ -134,7 +134,9 @@ async function main() {
         cron: { name: 'tool-dd', command: 'task dd.js', schedule: '0 0 * * *' },
       })
       expectValidOutput(tools.cronops_crons, ddCreated, 'daidai crons create')
-      const ddId = ddCreated.result.data.id
+      // One shape for both products: the adapter unwraps 呆呆's `{data, message}`.
+      expect(typeof ddCreated.result.id === 'number', 'daidai create returns the task flat (no {data} envelope)', Object.keys(ddCreated.result ?? {}).slice(0, 6))
+      const ddId = ddCreated.result.id
       expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'run', alias: 'dd', ids: [ddId] }), 'daidai crons run')
       expectValidOutput(tools.cronops_crons, await tools.cronops_crons.execute({ action: 'log', alias: 'dd', id: ddId }), 'daidai crons log')
       expectValidOutput(tools.cronops_api, await tools.cronops_api.execute({

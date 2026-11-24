@@ -7,6 +7,11 @@
   "engines": {
     "node": ">=24.9.0"
   },
+  "scripts": {
+    "test": "node scripts/selftest.mjs",
+    "check": "node scripts/check-tools.mjs",
+    "verify": "npm run check && npm test"
+  },
   "main": "index.js",
   "exports": {
     ".": "./index.js",

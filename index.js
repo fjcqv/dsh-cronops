@@ -14,8 +14,9 @@
  * as plain ToolDefinition objects.
  */
 
-import { DEFAULT_TIMEOUT_MS } from './lib/qinglong.js'
+import { DEFAULT_TIMEOUT_MS } from './lib/panels/driver.js'
 import { PanelEngine } from './lib/engine.js'
+import { renderGuidance } from './lib/guidance.js'
 import { makeRoutes } from './lib/routes.js'
 import { PanelStore } from './lib/store.js'
 import { buildTools } from './lib/tools.js'
@@ -37,7 +38,7 @@ const DEFAULTS = {
 /** Order of this plugin's prompt section (the SSH plugin uses 150). */
 const SECTION_ORDER = 160
 
-/** The four agent-tool names this plugin registers. */
+/** The agent-tool names this plugin registers. */
 const TOOL_NAMES = ['cronops_panels', 'cronops_envs', 'cronops_crons', 'cronops_script', 'cronops_api']
 
 /**
@@ -68,8 +69,6 @@ function profileConfig(ctx) {
   return config
 }
 
-/** Model-facing announcement: what this plugin is, what it can do, its limits. */
-export const CRONOPS_GUIDANCE = '本机已安装 dsh-cronops 插件（DSH 定时面板控制台，支持青龙面板与呆呆面板）：侧边栏「定时面板」入口，页面只有三个页签——主机（面板连接，可选青龙/呆呆）、环境变量、定时任务。能力：面板连接存 $DSH_HOME/dsh-cronops.json（默认 ~/.dsh，0600）。青龙走 /open/* OpenAPI，应用凭据 client_id + client_secret（或直接粘 token），令牌 30 天自动续期；呆呆走 /api/v1/* OpenAPI，应用凭据 app_key + app_secret（或粘 token），令牌 24 小时自动续期。工具：cronops_panels（列出/探活面板）、cronops_envs（列/建/改/删/启停环境变量）、cronops_crons（列/详情/建/改/运行/停止/启停/删除/日志/预览定时规则）、cronops_script（脚本读写：list 列目录、read 读正文、write 把本地文件推上面板并回读校验 sha256、run 触发执行——要推本地脚本一律用它，不要手拼 PUT /scripts 或用 curl）、cronops_api（通用桥：青龙的 subscriptions/configs/logs/dependencies/system/dashboard，呆呆的 logs/scripts/subscriptions/system）。通用桥常用路径：青龙 /envs、/crons、/crons/:id/log、/logs/detail（必填 path+file）、/subscriptions、/scripts、/system、/dashboard/overview；呆呆 /tasks、/envs、/logs、/scripts、/subscriptions、/system/info（系统信息不是 /system）、/system/dashboard（仪表盘不是 /dashboard）、/system/backups；青龙 /health 应用凭据不可用。限制：青龙的 /open/apps、/open/auth、/open/user、/open/update 与呆呆的 open-api、users、auth、mcp 一律拒绝（涉及凭据、账号与备份）；运行任务成功仅代表面板已受理触发，不代表脚本执行完成；写操作真实改动面板。面板「client_id/app_key」不是令牌，拿它当 Bearer 必然 401，令牌由插件自动换取。用户提到「青龙 / 呆呆 / 定时任务 / 环境变量 / 脚本 / 面板」时即指本插件。'
 
 /** Process-wide mount guard (a bundle row and a standalone install may coexist). */
 const MOUNTED_KEY = Symbol.for('dsh-web.mounted-plugins')
@@ -130,7 +129,7 @@ export function apply(ctx, config) {
       disposeSection = ctx.systemPrompt.section({
         name: 'plugin:dsh-cronops',
         order: SECTION_ORDER,
-        text: visibleToolText(ctx.tools, TOOL_NAMES, CRONOPS_GUIDANCE),
+        text: visibleToolText(ctx.tools, TOOL_NAMES, renderGuidance()),
       })
     }
     disposeRoutes = ctx.effect(() => {

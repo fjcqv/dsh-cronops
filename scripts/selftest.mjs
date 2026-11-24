@@ -12,9 +12,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { PanelEngine } from '../lib/engine.js'
-import { QinglongError, classifyProbeError } from '../lib/qinglong.js'
+import { descriptors, registerAdapter, registeredKinds, unregisterAdapter } from '../lib/panels/index.js'
+import { PanelError as QinglongError, classifyProbeError } from '../lib/panels/driver.js'
 import { makeRoutes } from '../lib/routes.js'
 import { PanelStore } from '../lib/store.js'
+import { buildTools } from '../lib/tools.js'
+import { PANEL3_KEY, PANEL3_SECRET, PANEL3_VERSION, startPanel3Mock } from './mock-panel3.mjs'
+import { PANEL3_META, Panel3Driver } from './fixtures/panel3.js'
 import { startDaidaiMock } from './mock-daidai.mjs'
 import { startMock } from './mock-qinglong.mjs'
 
@@ -217,6 +221,7 @@ async function main() {
         body: { alias: 'mock', action: 'run', ids: [id] },
       })
       expect(run.status === 200, 'runs the task', run.json)
+      expect(run.json.result?.ok === true && Array.isArray(run.json.result.ids), 'an empty panel body still reports what was accepted', run.json.result)
 
       const stop = await call(server.baseUrl, '/api/dsh-cronops/crons/action', {
         method: 'POST',
@@ -230,13 +235,21 @@ async function main() {
       const preview = await call(server.baseUrl, '/api/dsh-cronops/crons/preview', {
         query: { alias: 'mock', schedule: '0 0 * * *' },
       })
-      expect(preview.status === 200 && Array.isArray(preview.json.preview?.times) && preview.json.preview.times.length === 3, 'previews the schedule', preview.json)
+      expect(preview.status === 200 && Array.isArray(preview.json.preview?.times) && preview.json.preview.times.length === 5, 'previews the schedule', preview.json)
 
       const removed = await call(server.baseUrl, '/api/dsh-cronops/crons', {
         method: 'DELETE',
         body: { alias: 'mock', ids: [id] },
       })
       expect(removed.status === 200, 'deletes the task', removed.json)
+      expect(removed.json.result?.ok === true && Array.isArray(removed.json.result.deleted), 'delete reports the ids it sent', removed.json.result)
+
+      const impossible = await call(server.baseUrl, '/api/dsh-cronops/crons', {
+        method: 'POST',
+        body: { alias: 'mock', cron: { command: 'task x.js', schedule: '0 0 30 2 *' } },
+      })
+      expect(impossible.status === 400, 'an impossible date is refused', impossible.json)
+      expect(/schedule/.test(String(impossible.json.error ?? impossible.json.message)), 'a bare Validation failed is pinned on schedule', impossible.json)
     })
 
     await section('generic bridge: allowed, refused, unknown', async () => {
@@ -417,7 +430,7 @@ async function main() {
           method: 'PATCH',
           body: { alias: 'dd', env: { id: envRow.id, patch: { value: 'v2' } } },
         })
-        expect(updatedEnv.json.result?.data?.value === 'v2', 'updates a daidai env var', updatedEnv.json)
+        expect(updatedEnv.json.result?.value === 'v2', 'updates a daidai env var (no {data} envelope)', updatedEnv.json)
 
         const toggled = await call(server.baseUrl, '/api/dsh-cronops/envs/action', {
           method: 'POST',
@@ -441,15 +454,16 @@ async function main() {
           method: 'POST',
           body: { alias: 'dd', cron: { name: 'dd-task', command: 'task a.js', schedule: '0 1 * * *' } },
         })
-        const taskId = createdTask.json.result?.data?.id
+        // 呆呆's writes unwrap to the same flat shape as 青龙's.
+        const taskId = createdTask.json.result?.id
         expect(createdTask.status === 200 && taskId !== undefined, 'creates a daidai task', createdTask.json)
 
         const patchedTask = await call(server.baseUrl, '/api/dsh-cronops/crons', {
           method: 'PATCH',
           body: { alias: 'dd', id: taskId, patch: { name: 'dd-task-2', schedule: '0 2 * * *' } },
         })
-        expect(patchedTask.json.result?.data?.name === 'dd-task-2', 'updates a daidai task', patchedTask.json)
-        expect(patchedTask.json.result?.data?.cron_expression === '0 2 * * *', 'schedule maps to cron_expression', patchedTask.json)
+        expect(patchedTask.json.result?.name === 'dd-task-2', 'updates a daidai task', patchedTask.json)
+        expect(patchedTask.json.result?.cron_expression === '0 2 * * *', 'schedule maps to cron_expression', patchedTask.json)
 
         const run = await call(server.baseUrl, '/api/dsh-cronops/crons/action', {
           method: 'POST',
@@ -502,11 +516,322 @@ async function main() {
       }
     })
 
+    await section('script io: one text, whatever the envelope', async () => {
+      const dd = await startDaidaiMock({})
+      try {
+        store.create({
+          alias: 'dds',
+          kind: 'daidai',
+          baseUrl: dd.baseUrl,
+          auth: { kind: 'open', appKey: 'dd-key', appSecret: 'dd-secret' },
+        })
+        const script = buildTools(engine, store).find(candidate => candidate.name === 'cronops_script')
+        const body = 'console.log("hello")\n'
+        const written = await script.execute({ action: 'write', alias: 'dds', path: 'helloworld', file: 'probe.js', content: body })
+        expect(written.result.verified === true, 'write verifies against the stored text', written.result)
+        expect(written.result.remoteSha === written.result.localSha, 'local and remote hashes agree', written.result)
+        const read = await script.execute({ action: 'read', alias: 'dds', path: 'helloworld', file: 'probe.js' })
+        expect(read.result.content === body, 'read returns the text, not the JSON envelope', read.result.content)
+        expect(read.result.bytes === Buffer.byteLength(body, 'utf8'), 'bytes count the file, not the envelope', read.result.bytes)
+        const listing = await script.execute({ action: 'list', alias: 'dds', path: 'helloworld' })
+        const paths = listing.result.scripts.map(row => row.path)
+        expect(paths.includes('helloworld/probe.js'), 'listing keeps files under the directory', paths)
+        expect(!paths.some(path => path.endsWith('notify.py')), 'listing drops root-level files', paths)
+        const qinglongList = await script.execute({ action: 'list', alias: 'mock', path: '' })
+        expect(
+          qinglongList.result.scripts.every(row => typeof row.path === 'string' && row.path !== ''),
+          'a qinglong listing normalises to the same row shape',
+          qinglongList.result.scripts,
+        )
+      } finally {
+        store.delete('dds')
+        await dd.close()
+      }
+    })
+
+    await section('agent tools: the generic bridge never shadows a dedicated writer', async () => {
+      const api = buildTools(engine, store).find(candidate => candidate.name === 'cronops_api')
+      const invoke = async args => {
+        try {
+          return { ok: true, value: await api.execute(args) }
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? error.message : String(error) }
+        }
+      }
+
+      const listRead = await invoke({ method: 'GET', path: '/envs' })
+      expect(listRead.ok === true, 'GET /envs still reaches the panel', listRead.message)
+
+      const envWrite = await invoke({ method: 'PUT', path: '/envs', body: { id: 1, value: 'x' } })
+      expect(envWrite.ok === false && envWrite.message.includes('cronops_envs'), 'PUT /envs points at cronops_envs', envWrite.message)
+
+      const cronWrite = await invoke({ method: 'PUT', path: '/crons/stop', body: [1] })
+      expect(cronWrite.ok === false && cronWrite.message.includes('cronops_crons'), 'PUT /crons/stop points at cronops_crons', cronWrite.message)
+
+      const scriptWrite = await invoke({ method: 'POST', path: '/scripts', body: {} })
+      expect(scriptWrite.ok === false && scriptWrite.message.includes('cronops_script'), 'POST /scripts points at cronops_script', scriptWrite.message)
+
+      const credentialWrite = await invoke({ method: 'POST', path: '/apps' })
+      expect(credentialWrite.ok === false && /拒绝/.test(credentialWrite.message), 'credentials endpoints stay refused', credentialWrite.message)
+
+      const unknown = await invoke({ method: 'GET', path: '/nothing-here' })
+      expect(unknown.ok === false && /不支持/.test(unknown.message), 'unknown resources are refused', unknown.message)
+    })
+
+    await section('agent tools: an env action with no body still names what it touched', async () => {
+      const envs = buildTools(engine, store).find(candidate => candidate.name === 'cronops_envs')
+      const invoke = async args => {
+        try {
+          const raw = await envs.execute(args)
+          // `list` answers its rows at the top level, the write actions under `result`.
+          return { ok: true, value: raw?.result ?? raw }
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? error.message : String(error) }
+        }
+      }
+
+      const created = await invoke({ action: 'create', alias: 'mock', envs: [{ name: 'SELFTEST_ENV', value: 'v1' }] })
+      expect(created.ok === true, 'the tool creates the variable', created.message)
+      const listed = await invoke({ action: 'list', alias: 'mock', searchValue: 'SELFTEST_ENV' })
+      const id = listed.value?.envs?.[0]?.id
+      expect(typeof id === 'number', 'the tool lists it back with an id', listed.value)
+
+      const disabled = await invoke({ action: 'disable', alias: 'mock', ids: [id] })
+      expect(disabled.value?.ok === true && disabled.value.ids?.[0] === id, 'a bodyless disable still names the ids', disabled.value)
+
+      const removed = await invoke({ action: 'delete', alias: 'mock', ids: [id] })
+      expect(removed.value?.ok === true && removed.value.deleted?.[0] === id, 'a bodyless delete still names the ids', removed.value)
+    })
+
+    await section('agent tools: the script directory answers to dir as well as path', async () => {
+      const script = buildTools(engine, store).find(candidate => candidate.name === 'cronops_script')
+      const prefer = async args => (await script.execute(args).catch(error => ({ error: error.message })))?.result
+      const viaPath = await prefer({ action: 'list', alias: 'mock', path: 'helloworld' })
+      const viaDir = await prefer({ action: 'list', alias: 'mock', dir: 'helloworld' })
+      expect(JSON.stringify(viaPath) === JSON.stringify(viaDir), 'dir and path list the same rows', { viaPath, viaDir })
+      expect(Array.isArray(viaDir?.scripts), 'the listing still answers rows', viaDir)
+    })
+
+    await section('brand: a failure names its own product, not another one', async () => {
+      const entries = [{ alias: 'dead-dd', kind: 'daidai', baseUrl: 'http://127.0.0.1:1', auth: { kind: 'token', token: 'x' }, tags: [] }]
+      const stub = {
+        find: alias => entries.find(entry => entry.alias === alias),
+        defaultAlias: () => 'dead-dd',
+        list: () => entries,
+        summarize: entry => ({ alias: entry.alias, kind: entry.kind }),
+        recordTest: () => {},
+      }
+      const local = new PanelEngine(stub, { timeoutMs: 1000 })
+      const result = await local.test('dead-dd')
+      expect(
+        /呆呆面板/.test(result.message ?? '') && !/青龙/.test(result.message ?? ''),
+        'a Daidai failure is branded Daidai',
+        result.message,
+      )
+    })
+
+    await section('extensibility: a third product mounts from one file', async () => {
+      const p3 = await startPanel3Mock()
+      // Count what ships instead of hardcoding it: the fixture proves that one
+      // file adds a product, not that the catalogue happens to hold three.
+      const shipped = descriptors().length
+      try {
+        registerAdapter('panel3', Panel3Driver, PANEL3_META)
+        expect(registeredKinds().includes('panel3'), 'the registry accepts a new product', registeredKinds())
+        expect(descriptors().length === shipped + 1, 'the browser half is told about it', descriptors().length)
+
+        const probes = []
+        const entries = [{
+          alias: 'acme',
+          kind: 'panel3',
+          baseUrl: p3.baseUrl,
+          auth: { kind: 'open', appKey: PANEL3_KEY, appSecret: PANEL3_SECRET },
+          tags: [],
+        }]
+        const stub = {
+          find: alias => entries.find(entry => entry.alias === alias),
+          defaultAlias: () => 'acme',
+          list: () => entries,
+          summarize: entry => ({ alias: entry.alias, kind: entry.kind }),
+          recordTest: (alias, result) => probes.push({ alias, result }),
+        }
+        const engine3 = new PanelEngine(stub, { timeoutMs: 5000 })
+        expect(engine3.kindOf('acme') === 'panel3', 'the engine dispatches by product id', engine3.kindOf('acme'))
+
+        const envs = await engine3.envsList('acme')
+        expect(envs.length === 2 && envs[0].name === 'P3_VAR', 'env vars come from the new product', envs)
+
+        const crons = await engine3.cronsList('acme')
+        expect(crons.length === 2 && crons[0].name === 'demo', 'scheduled tasks come from the new product', crons)
+
+        const batch = await engine3.cronsAction('acme', { action: 'run', ids: [1, 1, 1, 1, 1, 1] })
+        expect(batch.count === 6, 'ids are chunked to the product batch limit', batch)
+
+        const probe = await engine3.test('acme')
+        expect(probe.auth === 'ok' && probe.version === PANEL3_VERSION, 'the shared probe skeleton works unchanged', probe)
+        expect(probes.length === 1, 'the probe result reaches the store', probes.length)
+      } finally {
+        unregisterAdapter('panel3')
+        await p3.close()
+      }
+      expect(descriptors().length === shipped, 'unmounting restores the shipped products', descriptors().length)
+    })
+
+    await section('panel metadata names only i18n keys the client ships', async () => {
+      const { KIND_META } = await import('../lib/panels/kinds.js')
+      const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+      const blockOf = name => {
+        const from = source.indexOf(`defineDict('${name}', [`)
+        const to = name === 'zh' ? source.indexOf("defineDict('en', [") : source.indexOf('\n    ])', from)
+        return source.slice(from, to)
+      }
+      const keysOf = name => new Set([...blockOf(name).matchAll(/\['([^']+)',/g)].map(match => match[1]))
+      const zh = keysOf('zh')
+      const en = keysOf('en')
+      expect(zh.size > 100 && en.size === zh.size, 'both dictionaries parsed', `${zh.size}/${en.size}`)
+      for (const meta of KIND_META) {
+        for (const field of meta.credentialFields) {
+          expect(zh.has(field.i18nKey), `${meta.kind}/${field.key} has a Chinese label`, field.i18nKey)
+          expect(en.has(field.i18nKey), `${meta.kind}/${field.key} has an English label`, field.i18nKey)
+        }
+        expect(zh.has(`panels.kind.${meta.kind}`), `${meta.kind} has a product label key`)
+      }
+    })
+
+    await section('script io uses the paths the panel actually stores', async () => {
+      const script = buildTools(engine, store).find(candidate => candidate.name === 'cronops_script')
+      const invoke = async args => {
+        try {
+          return { ok: true, value: (await script.execute(args))?.result }
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? error.message : String(error) }
+        }
+      }
+
+      const all = await invoke({ action: 'list', alias: 'mock' })
+      const paths = (all.value?.scripts ?? []).map(row => row.path)
+      expect(paths.includes('helloworld/hello.js'), 'the whole tree lists the path the panel stores', paths)
+      expect(!paths.some(path => /^helloworld\/helloworld\//.test(path)), 'no path carries its prefix twice', paths)
+      expect(all.value?.total === paths.length && all.value.truncated === undefined, 'a small listing reports its size', all.value)
+
+      const scoped = await invoke({ action: 'list', alias: 'mock', path: 'helloworld' })
+      const scopedPaths = (scoped.value?.scripts ?? []).map(row => row.path)
+      expect(scopedPaths.length === 1 && scopedPaths[0] === 'helloworld/hello.js', 'a scoped listing sees only that folder', scoped.value)
+      const viaDir = await invoke({ action: 'list', alias: 'mock', dir: 'helloworld' })
+      expect((viaDir.value?.scripts ?? []).length === scopedPaths.length, '`dir` is accepted where `path` is expected', viaDir)
+
+      const missing = await invoke({ action: 'read', alias: 'mock', path: 'helloworld', file: 'nope.js' })
+      expect(missing.ok === false && /文件不存在/.test(missing.message), 'a missing file fails instead of reading as empty', missing)
+      const real = await invoke({ action: 'read', alias: 'mock', path: 'helloworld', file: 'hello.js' })
+      expect(real.ok === true && real.value?.bytes > 0, 'a real file still reads', real)
+      const blank = await invoke({ action: 'read', alias: 'mock', file: 'empty.js' })
+      expect(blank.ok === true && blank.value?.bytes === 0, 'a genuinely empty file is not an error', blank)
+    })
+
+    await section('cron preview answers without the panel', async () => {
+      const crons = buildTools(engine, store).find(candidate => candidate.name === 'cronops_crons')
+      const invoke = async args => {
+        try {
+          const raw = await crons.execute(args)
+          // `preview` and `log` answer under their own key, the rest under `result`.
+          return { ok: true, value: raw?.preview ?? raw?.log ?? raw?.result ?? raw }
+        } catch (error) {
+          return { ok: false, message: error instanceof Error ? error.message : String(error) }
+        }
+      }
+      const preview = await invoke({ action: 'preview', alias: 'mock', schedule: '0 0 * * *' })
+      expect(preview.ok === true, '青龙 previews an expression the panel cannot', preview.message)
+      expect(preview.value?.times?.length === 5, 'five future runs are returned', preview.value)
+      expect(preview.value?.description === '每天 00:00', 'the description names the schedule', preview.value?.description)
+      const impossible = await invoke({ action: 'preview', alias: 'mock', schedule: '0 0 30 2 *' })
+      expect(impossible.ok === false && /日/.test(impossible.message), 'a date that never exists is refused, naming the field', impossible.message)
+      const six = await invoke({ action: 'preview', alias: 'mock', schedule: '0 0 0 * * *' })
+      expect(six.ok === false && /5 段/.test(six.message), 'six fields are refused with the reason', six.message)
+    })
+
+    await section('a read-only POST is not a write', async () => {
+      const dd = await startDaidaiMock({})
+      const alias = 'ddro'
+      store.create({ alias, kind: 'daidai', baseUrl: `http://127.0.0.1:${dd.port}`, auth: { kind: 'open', appKey: 'dd-key', appSecret: 'dd-secret' } })
+      try {
+        const api = buildTools(engine, store).find(candidate => candidate.name === 'cronops_api')
+        const invoke = async args => {
+          try {
+            return { ok: true, value: (await api.execute(args))?.result }
+          } catch (error) {
+            return { ok: false, message: error instanceof Error ? error.message : String(error) }
+          }
+        }
+
+        const parsed = await invoke({ action: undefined, alias, method: 'POST', path: '/tasks/cron/parse', body: { expression: '0 0 * * *' } })
+        expect(!/请用 cronops_crons/.test(parsed.message ?? ''), 'the expression parser is not treated as a write', parsed)
+
+        const written = await invoke({ action: undefined, alias, method: 'POST', path: '/tasks', body: { command: 'task a.js', schedule: '0 0 * * *' } })
+        expect(/请用 cronops_crons/.test(written.message ?? ''), 'a real write is still redirected to its tool', written)
+
+        const created = await invoke({ action: undefined, alias, method: 'POST', path: '/tasks', body: { command: 'task log.js', schedule: '0 0 * * *' } })
+        expect(created.ok === false, 'the write never reaches the panel', created)
+
+        const prefixed = await invoke({ method: 'POST', path: '/open/tasks/cron/parse', body: { expression: '0 0 * * *' } })
+        expect(!/请用 cronops_crons/.test(prefixed.message ?? ''), 'an explicit /open prefix is still read as a read', prefixed)
+
+        const crons = buildTools(engine, store).find(candidate => candidate.name === 'cronops_crons')
+        const log = await crons.execute({ action: 'log', alias, id: 1, offset: 6 })
+        const value = log?.log ?? log?.result
+        expect(value?.offset === 6, 'the log offset is honoured, not dropped', value)
+        expect(typeof value?.content === 'string' && !value.content.startsWith('[mock]'), 'the offset really moved the window', value?.content)
+      } finally {
+        await dd.close()
+        store.delete(alias)
+      }
+    })
+
+    await section('one preview shape, whichever panel answers', async () => {
+      const dd = await startDaidaiMock({})
+      const alias = 'ddpv'
+      store.create({ alias, kind: 'daidai', baseUrl: `http://127.0.0.1:${dd.port}`, auth: { kind: 'open', appKey: 'dd-key', appSecret: 'dd-secret' } })
+      try {
+        const crons = buildTools(engine, store).find(candidate => candidate.name === 'cronops_crons')
+        const preview = async (target, schedule) => {
+          try {
+            return { ok: true, value: (await crons.execute({ action: 'preview', alias: target, schedule }))?.preview }
+          } catch (error) {
+            return { ok: false, message: error instanceof Error ? error.message : String(error) }
+          }
+        }
+
+        const local = await preview('mock', '0 0 * * *')
+        const remote = await preview(alias, '0 0 * * *')
+        const offsetShape = /T\d\d:\d\d:\d\d[+-]\d\d:\d\d$/
+        expect(local.ok && offsetShape.test(local.value.times[0]), '青龙 spells a timestamp with the local offset', local.value?.times?.[0])
+        expect(remote.ok && offsetShape.test(remote.value.times[0]), '呆呆 spells its timestamps the same way', remote.value?.times?.[0])
+
+        const bad = await preview(alias, '0 0 *')
+        expect(bad.ok === false && /表达式/.test(bad.message), '呆呆 refuses an invalid expression instead of answering times:[]', bad)
+
+        const never = await preview(alias, '0 0 30 2 *')
+        expect(never.ok === false && /日/.test(never.message), 'a schedule with no future run is refused, not answered with times:[]', never)
+
+        const started = performance.now()
+        const impossible = await preview('mock', '0 0 30 2 *')
+        const spent = performance.now() - started
+        expect(impossible.ok === false && /日/.test(impossible.message), 'an unreachable date is still refused', impossible.message)
+        expect(spent < 500, 'the scan does not repeat its work every minute', `${Math.round(spent)}ms`)
+
+        const schema = crons.parameters.properties.schedule.description
+        expect(!/6 fields/.test(schema), 'the schedule description does not promise six fields', schema)
+      } finally {
+        await dd.close()
+        store.delete(alias)
+      }
+    })
+
     await section('store file contents', async () => {
       const file = JSON.parse(readFileSync(storePath, 'utf8'))
       expect(file.version === 1 && file.panels.length === 1, 'store shape is intact', file)
       expect(file.panels[0].auth.appSecret === 'mock-secret', 'secret stored owner-only (not projected)', file.panels[0].auth.appKey)
       expect(file.defaultPanel === 'mock', 'default panel recorded', file.defaultPanel)
+      expect(!readFileSync(storePath, 'utf8').includes('apiPrefix'), 'no internal field leaks into the store file')
     })
   } finally {
     await server.close()

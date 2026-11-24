@@ -18,6 +18,19 @@ const CLIENT_SECRET = 'mock-secret'
 const TOKEN = 'mock-token'
 
 /** In-memory state. */
+/**
+ * The real panel runs the schedule through a cron parser and rejects dates that
+ * cannot exist (30 February), answering with a bare "Validation failed".
+ */
+function scheduleIsPossible(schedule) {
+  const parts = String(schedule).trim().split(/\s+/)
+  if (parts.length !== 5) return false
+  const month = parts[3]
+  const day = Number(parts[2])
+  if (month === '2' && Number.isFinite(day) && day > 29) return false
+  return true
+}
+
 const state = {
   envs: [
     { id: 1, name: 'MOCK_ENV', value: 'hello', remarks: 'seeded', status: 0, position: 4500000000000000, isPinned: 0, labels: ['demo'] },
@@ -28,7 +41,12 @@ const state = {
     { id: 2, name: 'disabled', command: 'task off.js', schedule: '*/5 * * * *', status: 2, isDisabled: 1, labels: ['demo'], last_execution_time: null, log_path: 'off' },
   ],
   /** script path → stored text, for the script read/write round-trip. */
-  scripts: new Map([['/seeded.js', '// seeded\n']]),
+  scripts: new Map([
+    ['seeded.js', '// seeded\n'],
+    ['empty.js', ''],
+    ['helloworld/hello.js', "console.log('hello')\n"],
+    ['helloworld/nested/deep.js', "console.log('deep')\n"],
+  ]),
   nextEnvId: 3,
   nextCronId: 3,
   /** every `/open/dependencies` request this process served: { type, search } */
@@ -49,6 +67,35 @@ async function readBody(req) {
 }
 
 /** Write one JSON envelope. */
+/**
+ * The script tree the real panel returns for a listing without `path`: folders
+ * carry `type: 'directory'`, and every node's `key` is its full relative path.
+ * @returns tree nodes, folders first as mixed in insertion order.
+ */
+function scriptTree() {
+  const roots = []
+  const dirs = new Map()
+  const dirNode = full => {
+    const cached = dirs.get(full)
+    if (cached !== undefined) return cached
+    const node = { title: full.split('/').pop(), key: full, type: 'directory', children: [] }
+    dirs.set(full, node)
+    const parent = full.includes('/') ? full.slice(0, full.lastIndexOf('/')) : ''
+    if (parent === '') roots.push(node)
+    else dirNode(parent).children.push(node)
+    return node
+  }
+  for (const [key, text] of state.scripts) {
+    const parts = key.split('/')
+    const file = parts.pop()
+    const parent = parts.join('/')
+    const node = { title: file, key, type: 'file', size: String(text).length, createTime: 1793000000000 }
+    if (parent === '') roots.push(node)
+    else dirNode(parent).children.push(node)
+  }
+  return roots
+}
+
 function send(res, body, status = 200) {
   const payload = JSON.stringify(body)
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(payload) })
@@ -146,7 +193,7 @@ export async function startMock(options = {}) {
         if (typeof body?.filename !== 'string' || body.filename === '') {
           return businessFailure(res, 'Validation failed')
         }
-        const key = `${body.path ?? ''}/${body.filename}`
+        const key = [body.path, body.filename].filter(part => typeof part === 'string' && part !== '').join('/')
         if (method === 'PUT' && !state.scripts.has(key)) {
           return businessFailure(res, '脚本不存在', 404)
         }
@@ -157,7 +204,21 @@ export async function startMock(options = {}) {
         state.scripts.set(key, String(body.content ?? ''))
         return send(res, { code: 200 })
       }
-      return send(res, { code: 200, data: [...state.scripts.keys()] })
+      // The real panel answers two shapes: without `path` it returns the tree
+      // (every node's `key` is the full relative path), with `path` it returns
+      // flat rows for that directory. Serving only flat rows here hid a
+      // path-duplication bug in the tool layer for two rounds.
+      if (url.searchParams.get('path') === null) {
+        return send(res, { code: 200, data: scriptTree() })
+      }
+      const dir = url.searchParams.get('path')
+      const rows = []
+      for (const key of state.scripts.keys()) {
+        const under = dir === '' ? key : key.startsWith(`${dir}/`) ? key.slice(dir.length + 1) : null
+        if (under === null || under.includes('/')) continue
+        rows.push({ key, title: under, type: 'file', size: String(state.scripts.get(key) ?? '').length, createTime: 1793000000000 })
+      }
+      return send(res, { code: 200, data: rows })
     }
     if (path === '/open/scripts/run') {
       const body = await readBody(req)
@@ -170,8 +231,12 @@ export async function startMock(options = {}) {
         return businessFailure(res, 'Validation failed')
       }
       const file = url.searchParams.get('file')
-      const key = `${url.searchParams.get('path') ?? ''}/${file}`
-      return send(res, { code: 200, data: state.scripts.get(key) ?? `// ${file}\n` })
+      const dir = url.searchParams.get('path')
+      const key = [dir, file].filter(part => typeof part === 'string' && part !== '').join('/')
+      // A missing file is HTTP 200 with `data: ''` on the real panel — there is
+      // no way to tell it from an empty file, which is why the tool layer has
+      // to check the listing instead of trusting the body.
+      return send(res, { code: 200, data: state.scripts.get(key) ?? '' })
     }
     if (/^\/open\/scripts\/[^/]+$/.test(path)) {
       // Retired route: qinglong answers 410 with a replacement hint.
@@ -230,14 +295,15 @@ export async function startMock(options = {}) {
       const body = await readBody(req)
       const ids = Array.isArray(body) ? body : [body]
       state.envs = state.envs.filter(row => !ids.includes(row.id))
-      return send(res, { code: 200, data: ids })
+      // The real panel acknowledges these with no data at all.
+      return send(res, { code: 200 })
     }
     if ((path === '/open/envs/enable' || path === '/open/envs/disable') && method === 'PUT') {
       const body = await readBody(req)
       const ids = Array.isArray(body) ? body : [body]
       const status = path.endsWith('enable') ? 0 : 1
       for (const row of state.envs) if (ids.includes(row.id)) row.status = status
-      return send(res, { code: 200, data: ids })
+      return send(res, { code: 200 })
     }
     if (path === '/open/envs/detail') {
       // The real panel validates `:id` as a number, so the string "detail"
@@ -268,6 +334,7 @@ export async function startMock(options = {}) {
       if (typeof body?.command !== 'string' || typeof body?.schedule !== 'string') {
         return businessFailure(res, 'command 和 schedule 必填')
       }
+      if (!scheduleIsPossible(body.schedule)) return businessFailure(res, 'Validation failed')
       const row = {
         id: state.nextCronId++,
         name: body.name ?? '',
@@ -289,6 +356,7 @@ export async function startMock(options = {}) {
       if (typeof body.command !== 'string' || typeof body.schedule !== 'string') {
         return businessFailure(res, '更新必须带 command 和 schedule')
       }
+      if (!scheduleIsPossible(body.schedule)) return businessFailure(res, 'Validation failed')
       Object.assign(row, {
         name: body.name ?? row.name,
         command: body.command,
@@ -305,7 +373,7 @@ export async function startMock(options = {}) {
       const body = await readBody(req)
       const ids = Array.isArray(body) ? body : [body]
       state.crons = state.crons.filter(row => !ids.includes(row.id))
-      return send(res, { code: 200, data: ids })
+      return send(res, { code: 200 })
     }
     if (path === '/open/crons/preview' && method === 'GET') {
       const schedule = url.searchParams.get('schedule')
@@ -328,7 +396,8 @@ export async function startMock(options = {}) {
         if (actionMatch[1] === 'enable') { row.isDisabled = 0; row.status = 1 }
         if (actionMatch[1] === 'disable') { row.isDisabled = 1; row.status = 2 }
       }
-      return send(res, { code: 200, data: ids })
+      // The real panel answers this with `{code:200}` and no data at all.
+      return send(res, { code: 200 })
     }
     const logMatch = path.match(/^\/open\/crons\/(\d+)\/log$/)
     if (logMatch !== null && method === 'GET') {

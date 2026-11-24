@@ -1,9 +1,9 @@
-# dsh-cronops · 青龙 / 呆呆面板控制台
+# dsh-cronops · 青龙 / 呆呆 面板控制台
 
 [![npm](https://img.shields.io/npm/v/dsh-cronops.svg)](https://www.npmjs.com/package/dsh-cronops)
 [![license](https://img.shields.io/npm/l/dsh-cronops.svg)](LICENSE)
 
-在 DSH 侧边栏管理自托管的**定时任务面板**：用面板自己的 OpenAPI 应用凭据连接，页面里管连接、环境变量与定时任务，其余资源交给 agent 工具。目前支持两款面板：
+在 DSH 侧边栏管理自托管的**定时任务面板**：用面板自己的 OpenAPI 应用凭据连接，页面里管连接、环境变量与定时任务，其余资源交给 agent 工具。目前支持三款面板：
 
 | 面板 | 版本 | 接口 | 凭据 |
 |---|---|---|---|
@@ -65,7 +65,7 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 | `cronops_envs` | `list` / `create` / `update` / `delete` / `enable` / `disable` |
 | `cronops_crons` | `list` / `get` / `create` / `update` / `run` / `stop` / `enable` / `disable` / `delete` / `log` / `preview` |
 | `cronops_script` | 脚本读写：list 列目录、read 读正文、write 把本地文件推上面板并回读校验 sha256、run 触发执行（青龙按需 POST 新建 / PUT 覆盖） |
-| `cronops_api` | 通用桥：青龙 `/open/*`、呆呆 `/api/v1/*` |
+| `cronops_api` | 通用桥：青龙 `/open/*`、呆呆 `/api/v1/*`。读全开；**写只到没有专用工具的资源**——对 envs / crons / tasks / scripts 的写一律拒绝并指回上面三个工具（它们要先读后合并、分批、回读校验，原样转发会把面板写坏） |
 
 `cronops_api` 只放行业务资源：青龙 `/open/apps|auth|user|update`、呆呆 `open-api|users|auth|mcp` 一律拒绝（凭据、账号、备份、面板更新不交给模型）。路径走错、接口已下线（410）或缺少必填参数时会附加可操作提示，失败时还会附一行该资源的用法清单（例如 `GET /envs/<id>`，没有 `/envs/detail`）——例如青龙读脚本是 `GET /scripts/detail?path=<目录，可为空>&file=<文件名>`，保存是 `POST /scripts` 新建 / `PUT /scripts` 覆盖 `{filename,path,content}`（`cronops_script write` 自动选）；呆呆读脚本是 `GET /scripts/content?path=<文件>`。
 
@@ -89,6 +89,21 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 - `appSecret` / token 明文只在这个用户私有文件里，**永不返回给浏览器或 agent**（接口只投影 `appKey`、`hasSecret`）。
 - `/api/dsh-cronops/*` 走本机回环栅栏；写操作真实修改面板，运行任务只代表面板受理触发，不代表脚本执行完成。
 
+## Architecture
+
+```
+lib/panels/driver.js    PanelDriver：token 缓存与去重、401 只重试一次、探活骨架、品牌化错误
+lib/panels/qinglong.js  青龙 adapter：/open 前缀、GET /open/auth/token、{code,message} 信封
+lib/panels/daidai.js    呆呆 adapter：/api/v1 前缀、POST open-api/token、真实状态码信封
+lib/panels/kinds.js     产品元数据（文案、凭据字段、scope 顺序）——纯数据，无 import
+lib/panels/index.js     registry：driverFor / descriptors / registerAdapter
+lib/engine.js           对路由与工具的统一门面，按 kind 分派
+```
+
+两款面板的传输层（令牌获取与续期、in-flight 去重、401 重试、错误归类、探活骨架）只有**一份**实现；adapter 只写自己真正不同的部分（前缀、握手、信封、资源语义）。
+
+要加第三个面板：写一个 `extends PanelDriver` 的 adapter（实现 `prefixFor` / `authRequest` / `readToken` / `parseResponse` / `probeTargets` / `cheapestRead`），在 `kinds.js` 加一条元数据，在 `panels/index.js` 注册一行。`routes.js`、`tools.js`、`client.js`、engine 都不用动——`scripts/fixtures/panel3.js` 就是这条路径的活样本，selftest 每次运行都会挂载并跑通它。
+
 ## Compatibility
 
 - 青龙 2.x（实测 2.24.0）：`/open` OpenAPI，应用令牌 30 天。
@@ -104,10 +119,12 @@ git clone git@github.com:fjcqv/dsh-cronops.git
 ## Development
 
 ```bash
-node scripts/selftest.mjs        # 主机半：两套 mock 面板 + 全部路由/错误分支（93 项）
-node scripts/check-tools.mjs     # 工具输出契约，用宿主自带校验器（66 项）
+npm test                         # 主机半：四套 mock 面板 + 全部路由/错误分支（138 项）
+npm run check                    # 工具输出契约，用宿主自带校验器（86 项）
+npm run verify                   # 两个都跑
 node scripts/mock-qinglong.mjs 5799   # 假青龙：mock-client / mock-secret
 node scripts/mock-daidai.mjs 5798     # 假呆呆：dd-key / dd-secret
+node scripts/mock-panel3.mjs 5797     # 假第三方（含"新面板只写一个文件"的验收）
 ```
 
 `scripts/` 只用于验证，不参与运行时。发布由 GitHub Actions 的 **Trusted Publishing（OIDC）** 完成，不需要 npm token 或 2FA：

@@ -6,9 +6,11 @@
  * `main` slot, then renders three tabs with the same structure as the SSH
  * plugin:
  *
- *   1. 主机 (panels)        — Qinglong panel connections, mirroring the SSH
- *                             host manager: list, add, edit, delete, test,
- *                             set default.
+ *   1. 主机 (panels)        — panel connections, mirroring the SSH host
+ *                             manager: list, add, edit, delete, test, set
+ *                             default. The products themselves (names, credential
+ *                             fields, scope order) come from the host's `kinds`
+ *                             metadata, not from this file.
  *   2. 环境变量 (envs)      — list / search / create / edit / delete / enable /
  *                             disable environment variables.
  *   3. 定时任务 (crons)     — list / search / paged view / run / stop / enable /
@@ -41,298 +43,349 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------- locales
 
-    const zh = {
-      'entry.label': '定时面板',
-      'entry.tooltip': '青龙 / 呆呆面板控制台',
-      'panel.title': '定时面板',
-      'panel.back': '返回会话',
-      'tab.panels': '主机',
-      'tab.envs': '环境变量',
-      'tab.crons': '定时任务',
-      'common.loading': '加载中…',
-      'common.refresh': '刷新',
-      'common.close': '关闭',
-      'common.cancel': '取消',
-      'common.save': '保存',
-      'common.delete': '删除',
-      'common.edit': '编辑',
-      'common.create': '新增',
-      'common.search': '搜索',
-      'common.none': '-',
-      'current.panel': '当前面板：{alias} · {url}',
-      'common.enabled': '启用',
-      'common.disabled': '禁用',
-      'common.running': '运行中',
-      'common.idle': '空闲',
-      'common.confirmDelete': '确定删除「{name}」？',
-      'error.noPanel': '尚未配置青龙面板。请先在「主机」页签新增一个面板（应用 client_id / client_secret）。',
-      'error.generic': '操作失败',
-      'notice.triggered': '已向面板提交触发请求（不代表脚本已执行完成）。',
-      'notice.saved': '已保存。',
-      'panels.empty': '尚未配置面板。点击「新增面板」填写面板地址与应用凭据。',
-      'panels.scopes.unknown': '未测试（点「测试」获取）',
-      'panels.scopes.hint': '只读探测；写权限与该资源同 scope',
-      'panels.scopes.title': '权限',
-      'panels.scopes.testedAt': '测试于 {time}',
-      'panels.col.scopes': '权限',
-      'panels.col.status': '状态',
-      'panels.status.untested': '未测试',
-      'scope.envs': '环境变量',
-      'scope.crons': '定时任务',
-      'scope.tasks': '定时任务',
-      'scope.subscriptions': '订阅',
-      'scope.configs': '配置文件',
-      'scope.scripts': '脚本',
-      'scope.logs': '日志',
-      'scope.dependencies': '依赖',
-      'scope.dashboard': '仪表盘',
-      'scope.system': '系统信息',
-      'scope.backup': '备份',
-      'scope.state.ok': '有权限',
-      'scope.state.forbidden': '无权限',
-      'scope.state.error': '探测失败',
-      'scope.state.timeout': '超时',
-      'scope.state.public': '公开',
-      'scope.state.na': '不适用',
-      'panels.add': '新增面板',
-      'panels.testAll': '测试全部',
-      'panels.col.alias': '别名',
-      'panels.col.kind': '类型',
-      'panels.col.url': '面板地址',
-      'panels.col.auth': '凭据',
-      'panels.col.status': '状态',
-      'panels.col.actions': '操作',
-      'panels.test': '测试',
-      'panels.testing': '测试中…',
-      'panels.testAlling': '测试中…',
-      'panels.setDefault': '设为默认',
-      'panels.default': '默认',
-      'panels.deleteConfirm': '删除面板「{alias}」？',
-      'panels.auth.open': '应用凭据',
-      'panels.auth.token': '令牌',
-      'panels.status.ok': '正常',
-      'panels.status.required': '凭据无效',
-      'panels.status.forbidden': '权限不足',
-      'panels.status.failed': '连接失败',
-      'panels.status.unknown': '未测试',
-      'panels.form.create': '新增面板',
-      'panels.form.edit': '编辑面板「{alias}」',
-      'panels.form.alias': '别名（唯一标识）',
-      'panels.kind': '面板类型',
-      'panels.kind.qinglong': '青龙面板',
-      'panels.kind.daidai': '呆呆面板',
-      'panels.form.appKey': 'app_key',
-      'panels.form.appSecret': 'app_secret',
-      'envs.col.group': '分组',
-      'envs.important': '重要',
-      'panels.form.baseUrl': '面板地址',
-      'panels.form.authKind': '凭据类型',
-      'panels.form.clientId': 'client_id',
-      'panels.form.clientSecret': 'client_secret',
-      'panels.form.token': '访问令牌',
-      'panels.form.keepSecret': '留空表示沿用已保存的密钥',
-      'panels.form.timeoutMs': '请求超时（毫秒，可留空）',
-      'panels.form.insecureTls': '跳过 TLS 证书校验（自签证书）',
-      'panels.form.description': '备注（可留空）',
-      'envs.search': '搜索变量名或值',
-      'envs.add': '新增变量',
-      'envs.col.name': '名称',
-      'envs.col.value': '值',
-      'envs.col.remarks': '备注',
-      'envs.col.status': '状态',
-      'envs.col.actions': '操作',
-      'envs.empty': '没有环境变量。',
-      'envs.reveal': '显示',
-      'envs.hide': '隐藏',
-      'envs.deleteConfirm': '删除 {count} 个环境变量？',
-      'envs.form.create': '新增环境变量',
-      'envs.form.edit': '编辑环境变量「{name}」',
-      'envs.form.name': '变量名',
-      'envs.form.nameHint': '以字母或下划线开头，只能包含字母、数字和下划线',
-      'envs.form.value': '变量值',
-      'envs.form.remarks': '备注（可留空）',
-      'envs.form.labels': '标签（逗号分隔）',
-      'crons.search': '搜索任务名或命令',
-      'crons.add': '新增任务',
-      'crons.col.name': '名称',
-      'crons.col.command': '命令',
-      'crons.col.schedule': '定时规则',
-      'crons.col.status': '状态',
-      'crons.col.last': '上次运行',
-      'crons.col.actions': '操作',
-      'crons.empty': '没有定时任务。',
-      'crons.run': '运行',
-      'crons.stop': '停止',
-      'crons.log': '日志',
-      'crons.autoRefresh': '自动刷新',
-      'crons.deleteConfirm': '删除 {count} 个定时任务？',
-      'crons.total': '共 {total} 条',
-      'crons.prev': '上一页',
-      'crons.next': '下一页',
-      'crons.page': '第 {page} / {pages} 页',
-      'crons.form.create': '新增定时任务',
-      'crons.form.edit': '编辑任务「{name}」',
-      'crons.form.name': '任务名称',
-      'crons.form.command': '命令（如 task demo.js）',
-      'crons.form.schedule': '定时规则（5/6 字段或 @daily 等宏）',
-      'crons.form.labels': '标签（逗号分隔）',
-      'crons.form.taskBefore': '前置命令（可留空）',
-      'crons.form.taskAfter': '后置命令（可留空）',
-      'crons.form.workDir': '工作目录（可留空）',
-      'crons.form.multi': '允许同一任务多实例并行',
-      'crons.form.preview': '未来触发',
-      'crons.form.previewEmpty': '填写定时规则后显示未来触发时间',
-      'log.title': '任务日志「{name}」',
-      'log.empty': '暂无日志内容。',
-      'log.status': '日志状态',
-      'log.truncated': '（已截断，仅显示尾部）',
+    /**
+     * Locale dictionaries are declared as `[key, value]` pairs and built with
+     * `Object.fromEntries`. A repeated key inside an object literal is silently
+     * collapsed by the parser, which leaves no runtime trace at all; keeping the
+     * pair list is what lets `auditDictionaries()` still see it and warn.
+     */
+    const DICTS = []
+
+    /** Build one dictionary and remember its pair list for the audit. */
+    function defineDict(name, pairs) {
+      const dict = Object.fromEntries(pairs)
+      DICTS.push({ name, pairs, dict })
+      return dict
     }
 
-    const en = {
-      'entry.label': 'Panels',
-      'entry.tooltip': 'Qinglong / Daidai panel console',
-      'panel.title': 'Task panels',
-      'panel.back': 'Back to conversation',
-      'tab.panels': 'Hosts',
-      'tab.envs': 'Environment',
-      'tab.crons': 'Scheduled tasks',
-      'common.loading': 'Loading…',
-      'common.refresh': 'Refresh',
-      'common.close': 'Close',
-      'common.cancel': 'Cancel',
-      'common.save': 'Save',
-      'common.delete': 'Delete',
-      'common.edit': 'Edit',
-      'common.create': 'New',
-      'common.search': 'Search',
-      'common.none': '-',
-      'current.panel': 'Panel: {alias} · {url}',
-      'common.enabled': 'Enabled',
-      'common.disabled': 'Disabled',
-      'common.running': 'Running',
-      'common.idle': 'Idle',
-      'common.confirmDelete': 'Delete "{name}"?',
-      'error.noPanel': 'No Qinglong panel configured yet. Add one in the Hosts tab with its application client_id / client_secret.',
-      'error.generic': 'Request failed',
-      'notice.triggered': 'The panel accepted the trigger request (this does not mean the script finished).',
-      'notice.saved': 'Saved.',
-      'panels.empty': 'No panel configured. Use "New panel" to add a base URL and application credentials.',
-      'panels.scopes.unknown': 'Not tested yet (use Test)',
-      'panels.scopes.hint': 'Read probe only; writes use the same scope',
-      'panels.scopes.title': 'Scopes',
-      'panels.scopes.testedAt': 'Tested {time}',
-      'panels.col.scopes': 'Scopes',
-      'panels.col.status': 'Status',
-      'panels.status.untested': 'Not tested',
-      'scope.envs': 'Environment',
-      'scope.crons': 'Tasks',
-      'scope.tasks': 'Tasks',
-      'scope.subscriptions': 'Subscriptions',
-      'scope.configs': 'Config files',
-      'scope.scripts': 'Scripts',
-      'scope.logs': 'Logs',
-      'scope.dependencies': 'Dependencies',
-      'scope.dashboard': 'Dashboard',
-      'scope.system': 'System',
-      'scope.backup': 'Backups',
-      'scope.state.ok': 'granted',
-      'scope.state.forbidden': 'missing',
-      'scope.state.error': 'probe failed',
-      'scope.state.timeout': 'timed out',
-      'scope.state.public': 'public',
-      'scope.state.na': 'n/a',
-      'panels.add': 'New panel',
-      'panels.testAll': 'Test all',
-      'panels.col.alias': 'Alias',
-      'panels.col.kind': 'Type',
-      'panels.col.url': 'Base URL',
-      'panels.col.auth': 'Credential',
-      'panels.col.status': 'Status',
-      'panels.col.actions': 'Actions',
-      'panels.test': 'Test',
-      'panels.testing': 'Testing…',
-      'panels.testAlling': 'Testing…',
-      'panels.setDefault': 'Set default',
-      'panels.default': 'default',
-      'panels.deleteConfirm': 'Delete panel "{alias}"?',
-      'panels.auth.open': 'App credential',
-      'panels.auth.token': 'Token',
-      'panels.status.ok': 'OK',
-      'panels.status.required': 'Credential rejected',
-      'panels.status.forbidden': 'Scope missing',
-      'panels.status.failed': 'Unreachable',
-      'panels.status.unknown': 'Not tested',
-      'panels.form.create': 'New panel',
-      'panels.form.edit': 'Edit panel "{alias}"',
-      'panels.form.alias': 'Alias (unique id)',
-      'panels.kind': 'Panel type',
-      'panels.kind.qinglong': 'Qinglong',
-      'panels.kind.daidai': 'Daidai',
-      'panels.form.appKey': 'app_key',
-      'panels.form.appSecret': 'app_secret',
-      'envs.col.group': 'Group',
-      'envs.important': 'important',
-      'panels.form.baseUrl': 'Base URL',
-      'panels.form.authKind': 'Credential type',
-      'panels.form.clientId': 'client_id',
-      'panels.form.clientSecret': 'client_secret',
-      'panels.form.token': 'Access token',
-      'panels.form.keepSecret': 'Leave empty to keep the saved secret',
-      'panels.form.timeoutMs': 'Request timeout in ms (optional)',
-      'panels.form.insecureTls': 'Skip TLS certificate verification (self-signed)',
-      'panels.form.description': 'Note (optional)',
-      'envs.search': 'Search name or value',
-      'envs.add': 'New variable',
-      'envs.col.name': 'Name',
-      'envs.col.value': 'Value',
-      'envs.col.remarks': 'Remarks',
-      'envs.col.status': 'Status',
-      'envs.col.actions': 'Actions',
-      'envs.empty': 'No environment variables.',
-      'envs.reveal': 'Show',
-      'envs.hide': 'Hide',
-      'envs.deleteConfirm': 'Delete {count} environment variable(s)?',
-      'envs.form.create': 'New environment variable',
-      'envs.form.edit': 'Edit variable "{name}"',
-      'envs.form.name': 'Name',
-      'envs.form.nameHint': 'Start with a letter or underscore; letters, digits and underscores only',
-      'envs.form.value': 'Value',
-      'envs.form.remarks': 'Remarks (optional)',
-      'envs.form.labels': 'Labels (comma separated)',
-      'crons.search': 'Search name or command',
-      'crons.add': 'New task',
-      'crons.col.name': 'Name',
-      'crons.col.command': 'Command',
-      'crons.col.schedule': 'Schedule',
-      'crons.col.status': 'Status',
-      'crons.col.last': 'Last run',
-      'crons.col.actions': 'Actions',
-      'crons.empty': 'No scheduled tasks.',
-      'crons.run': 'Run',
-      'crons.stop': 'Stop',
-      'crons.log': 'Log',
-      'crons.autoRefresh': 'Auto refresh',
-      'crons.deleteConfirm': 'Delete {count} scheduled task(s)?',
-      'crons.total': '{total} total',
-      'crons.prev': 'Previous',
-      'crons.next': 'Next',
-      'crons.page': 'Page {page} / {pages}',
-      'crons.form.create': 'New scheduled task',
-      'crons.form.edit': 'Edit task "{name}"',
-      'crons.form.name': 'Task name',
-      'crons.form.command': 'Command (for example task demo.js)',
-      'crons.form.schedule': 'Schedule (5/6 fields or a macro such as @daily)',
-      'crons.form.labels': 'Labels (comma separated)',
-      'crons.form.taskBefore': 'Before command (optional)',
-      'crons.form.taskAfter': 'After command (optional)',
-      'crons.form.workDir': 'Working directory (optional)',
-      'crons.form.multi': 'Allow multiple instances of this task',
-      'crons.form.preview': 'Next triggers',
-      'crons.form.previewEmpty': 'Enter a schedule to preview its next triggers',
-      'log.title': 'Task log "{name}"',
-      'log.empty': 'No log content yet.',
-      'log.status': 'Log status',
-      'log.truncated': '(truncated, tail only)',
+    const zh = defineDict('zh', [
+      ['entry.label', '定时面板'],
+      ['entry.tooltip', '青龙 / 呆呆面板控制台'],
+      ['panel.title', '定时面板'],
+      ['panel.back', '返回会话'],
+      ['tab.panels', '主机'],
+      ['tab.envs', '环境变量'],
+      ['tab.crons', '定时任务'],
+      ['common.loading', '加载中…'],
+      ['common.refresh', '刷新'],
+      ['common.close', '关闭'],
+      ['common.cancel', '取消'],
+      ['common.save', '保存'],
+      ['common.delete', '删除'],
+      ['common.edit', '编辑'],
+      ['common.create', '新增'],
+      ['common.search', '搜索'],
+      ['common.none', '-'],
+      ['current.panel', '当前面板：{alias} · {url}'],
+      ['common.enabled', '启用'],
+      ['common.disabled', '禁用'],
+      ['common.running', '运行中'],
+      ['common.idle', '空闲'],
+      ['common.confirmDelete', '确定删除「{name}」？'],
+      ['error.noPanel', '尚未配置面板。请先在「主机」页签新增一个（青龙填 client_id / client_secret，呆呆填 app_key / app_secret）。'],
+      ['error.generic', '操作失败'],
+      ['notice.triggered', '已向面板提交触发请求（不代表脚本已执行完成）。'],
+      ['notice.saved', '已保存。'],
+      ['panels.empty', '尚未配置面板。点击「新增面板」填写面板地址与应用凭据。'],
+      ['panels.scopes.unknown', '未测试（点「测试」获取）'],
+      ['panels.scopes.hint', '只读探测；写权限与该资源同 scope'],
+      ['panels.scopes.title', '权限'],
+      ['panels.scopes.testedAt', '测试于 {time}'],
+      ['panels.col.scopes', '权限'],
+      ['panels.status.untested', '未测试'],
+      ['scope.envs', '环境变量'],
+      ['scope.crons', '定时任务'],
+      ['scope.tasks', '定时任务'],
+      ['scope.subscriptions', '订阅'],
+      ['scope.configs', '配置文件'],
+      ['scope.scripts', '脚本'],
+      ['scope.logs', '日志'],
+      ['scope.dependencies', '依赖'],
+      ['scope.dashboard', '仪表盘'],
+      ['scope.system', '系统信息'],
+      ['scope.backup', '备份'],
+      ['scope.state.ok', '有权限'],
+      ['scope.state.forbidden', '无权限'],
+      ['scope.state.error', '探测失败'],
+      ['scope.state.timeout', '超时'],
+      ['scope.state.public', '公开'],
+      ['scope.state.na', '不适用'],
+      ['panels.add', '新增面板'],
+      ['panels.testAll', '测试全部'],
+      ['panels.col.alias', '别名'],
+      ['panels.col.kind', '类型'],
+      ['panels.col.url', '面板地址'],
+      ['panels.col.auth', '凭据'],
+      ['panels.col.status', '状态'],
+      ['panels.col.actions', '操作'],
+      ['panels.test', '测试'],
+      ['panels.testing', '测试中…'],
+      ['panels.testAlling', '测试中…'],
+      ['panels.setDefault', '设为默认'],
+      ['panels.default', '默认'],
+      ['panels.deleteConfirm', '删除面板「{alias}」？'],
+      ['panels.auth.open', '应用凭据'],
+      ['panels.auth.token', '令牌'],
+      ['panels.status.ok', '正常'],
+      ['panels.status.required', '凭据无效'],
+      ['panels.status.forbidden', '权限不足'],
+      ['panels.status.failed', '连接失败'],
+      ['panels.status.unknown', '未测试'],
+      ['panels.form.create', '新增面板'],
+      ['panels.form.edit', '编辑面板「{alias}」'],
+      ['panels.form.alias', '别名（唯一标识）'],
+      ['panels.kind', '面板类型'],
+      ['panels.kind.qinglong', '青龙面板'],
+      ['panels.kind.daidai', '呆呆面板'],
+      ['panels.form.appKey', 'app_key'],
+      ['panels.form.appSecret', 'app_secret'],
+      ['panels.field.appKey', 'app_key'],
+      ['panels.field.appSecret', 'app_secret'],
+      ['panels.field.clientId', 'client_id'],
+      ['panels.field.clientSecret', 'client_secret'],
+      ['envs.col.group', '分组'],
+      ['envs.important', '重要'],
+      ['panels.form.baseUrl', '面板地址'],
+      ['panels.form.authKind', '凭据类型'],
+      ['panels.form.clientId', 'client_id'],
+      ['panels.form.clientSecret', 'client_secret'],
+      ['panels.form.token', '访问令牌'],
+      ['panels.form.keepSecret', '留空表示沿用已保存的密钥'],
+      ['panels.form.timeoutMs', '请求超时（毫秒，可留空）'],
+      ['panels.form.insecureTls', '跳过 TLS 证书校验（自签证书）'],
+      ['panels.form.description', '备注（可留空）'],
+      ['envs.search', '搜索变量名或值'],
+      ['envs.add', '新增变量'],
+      ['envs.col.name', '名称'],
+      ['envs.col.value', '值'],
+      ['envs.col.remarks', '备注'],
+      ['envs.col.status', '状态'],
+      ['envs.col.actions', '操作'],
+      ['envs.empty', '没有环境变量。'],
+      ['envs.reveal', '显示'],
+      ['envs.hide', '隐藏'],
+      ['envs.deleteConfirm', '删除 {count} 个环境变量？'],
+      ['envs.form.create', '新增环境变量'],
+      ['envs.form.edit', '编辑环境变量「{name}」'],
+      ['envs.form.name', '变量名'],
+      ['envs.form.nameHint', '以字母或下划线开头，只能包含字母、数字和下划线'],
+      ['envs.form.value', '变量值'],
+      ['envs.form.remarks', '备注（可留空）'],
+      ['envs.form.labels', '标签（逗号分隔）'],
+      ['crons.search', '搜索任务名或命令'],
+      ['crons.add', '新增任务'],
+      ['crons.col.name', '名称'],
+      ['crons.col.command', '命令'],
+      ['crons.col.schedule', '定时规则'],
+      ['crons.col.status', '状态'],
+      ['crons.col.last', '上次运行'],
+      ['crons.col.actions', '操作'],
+      ['crons.empty', '没有定时任务。'],
+      ['crons.run', '运行'],
+      ['crons.stop', '停止'],
+      ['crons.log', '日志'],
+      ['crons.autoRefresh', '自动刷新'],
+      ['crons.deleteConfirm', '删除 {count} 个定时任务？'],
+      ['crons.total', '共 {total} 条'],
+      ['crons.prev', '上一页'],
+      ['crons.next', '下一页'],
+      ['crons.page', '第 {page} / {pages} 页'],
+      ['crons.form.create', '新增定时任务'],
+      ['crons.form.edit', '编辑任务「{name}」'],
+      ['crons.form.name', '任务名称'],
+      ['crons.form.command', '命令（如 task demo.js）'],
+      ['crons.form.schedule', '定时规则（5/6 字段或 @daily 等宏）'],
+      ['crons.form.labels', '标签（逗号分隔）'],
+      ['crons.form.taskBefore', '前置命令（可留空）'],
+      ['crons.form.taskAfter', '后置命令（可留空）'],
+      ['crons.form.workDir', '工作目录（可留空）'],
+      ['crons.form.multi', '允许同一任务多实例并行'],
+      ['crons.form.preview', '未来触发'],
+      ['crons.form.previewEmpty', '填写定时规则后显示未来触发时间'],
+      ['log.title', '任务日志「{name}」'],
+      ['log.empty', '暂无日志内容。'],
+      ['log.status', '日志状态'],
+      ['log.truncated', '（已截断，仅显示尾部）'],
+    ])
+
+    const en = defineDict('en', [
+      ['entry.label', 'Panels'],
+      ['entry.tooltip', 'Qinglong / Daidai panel console'],
+      ['panel.title', 'Task panels'],
+      ['panel.back', 'Back to conversation'],
+      ['tab.panels', 'Hosts'],
+      ['tab.envs', 'Environment'],
+      ['tab.crons', 'Scheduled tasks'],
+      ['common.loading', 'Loading…'],
+      ['common.refresh', 'Refresh'],
+      ['common.close', 'Close'],
+      ['common.cancel', 'Cancel'],
+      ['common.save', 'Save'],
+      ['common.delete', 'Delete'],
+      ['common.edit', 'Edit'],
+      ['common.create', 'New'],
+      ['common.search', 'Search'],
+      ['common.none', '-'],
+      ['current.panel', 'Panel: {alias} · {url}'],
+      ['common.enabled', 'Enabled'],
+      ['common.disabled', 'Disabled'],
+      ['common.running', 'Running'],
+      ['common.idle', 'Idle'],
+      ['common.confirmDelete', 'Delete "{name}"?'],
+      ['error.noPanel', 'No panel configured yet. Add one in the Hosts tab (Qinglong takes client_id / client_secret, Daidai takes app_key / app_secret).'],
+      ['error.generic', 'Request failed'],
+      ['notice.triggered', 'The panel accepted the trigger request (this does not mean the script finished).'],
+      ['notice.saved', 'Saved.'],
+      ['panels.empty', 'No panel configured. Use "New panel" to add a base URL and application credentials.'],
+      ['panels.scopes.unknown', 'Not tested yet (use Test)'],
+      ['panels.scopes.hint', 'Read probe only; writes use the same scope'],
+      ['panels.scopes.title', 'Scopes'],
+      ['panels.scopes.testedAt', 'Tested {time}'],
+      ['panels.col.scopes', 'Scopes'],
+      ['panels.status.untested', 'Not tested'],
+      ['scope.envs', 'Environment'],
+      ['scope.crons', 'Tasks'],
+      ['scope.tasks', 'Tasks'],
+      ['scope.subscriptions', 'Subscriptions'],
+      ['scope.configs', 'Config files'],
+      ['scope.scripts', 'Scripts'],
+      ['scope.logs', 'Logs'],
+      ['scope.dependencies', 'Dependencies'],
+      ['scope.dashboard', 'Dashboard'],
+      ['scope.system', 'System'],
+      ['scope.backup', 'Backups'],
+      ['scope.state.ok', 'granted'],
+      ['scope.state.forbidden', 'missing'],
+      ['scope.state.error', 'probe failed'],
+      ['scope.state.timeout', 'timed out'],
+      ['scope.state.public', 'public'],
+      ['scope.state.na', 'n/a'],
+      ['panels.add', 'New panel'],
+      ['panels.testAll', 'Test all'],
+      ['panels.col.alias', 'Alias'],
+      ['panels.col.kind', 'Type'],
+      ['panels.col.url', 'Base URL'],
+      ['panels.col.auth', 'Credential'],
+      ['panels.col.status', 'Status'],
+      ['panels.col.actions', 'Actions'],
+      ['panels.test', 'Test'],
+      ['panels.testing', 'Testing…'],
+      ['panels.testAlling', 'Testing…'],
+      ['panels.setDefault', 'Set default'],
+      ['panels.default', 'default'],
+      ['panels.deleteConfirm', 'Delete panel "{alias}"?'],
+      ['panels.auth.open', 'App credential'],
+      ['panels.auth.token', 'Token'],
+      ['panels.status.ok', 'OK'],
+      ['panels.status.required', 'Credential rejected'],
+      ['panels.status.forbidden', 'Scope missing'],
+      ['panels.status.failed', 'Unreachable'],
+      ['panels.status.unknown', 'Not tested'],
+      ['panels.form.create', 'New panel'],
+      ['panels.form.edit', 'Edit panel "{alias}"'],
+      ['panels.form.alias', 'Alias (unique id)'],
+      ['panels.kind', 'Panel type'],
+      ['panels.kind.qinglong', 'Qinglong'],
+      ['panels.kind.daidai', 'Daidai'],
+      ['panels.form.appKey', 'app_key'],
+      ['panels.form.appSecret', 'app_secret'],
+      ['panels.field.appKey', 'app_key'],
+      ['panels.field.appSecret', 'app_secret'],
+      ['panels.field.clientId', 'client_id'],
+      ['panels.field.clientSecret', 'client_secret'],
+      ['envs.col.group', 'Group'],
+      ['envs.important', 'important'],
+      ['panels.form.baseUrl', 'Base URL'],
+      ['panels.form.authKind', 'Credential type'],
+      ['panels.form.clientId', 'client_id'],
+      ['panels.form.clientSecret', 'client_secret'],
+      ['panels.form.token', 'Access token'],
+      ['panels.form.keepSecret', 'Leave empty to keep the saved secret'],
+      ['panels.form.timeoutMs', 'Request timeout in ms (optional)'],
+      ['panels.form.insecureTls', 'Skip TLS certificate verification (self-signed)'],
+      ['panels.form.description', 'Note (optional)'],
+      ['envs.search', 'Search name or value'],
+      ['envs.add', 'New variable'],
+      ['envs.col.name', 'Name'],
+      ['envs.col.value', 'Value'],
+      ['envs.col.remarks', 'Remarks'],
+      ['envs.col.status', 'Status'],
+      ['envs.col.actions', 'Actions'],
+      ['envs.empty', 'No environment variables.'],
+      ['envs.reveal', 'Show'],
+      ['envs.hide', 'Hide'],
+      ['envs.deleteConfirm', 'Delete {count} environment variable(s)?'],
+      ['envs.form.create', 'New environment variable'],
+      ['envs.form.edit', 'Edit variable "{name}"'],
+      ['envs.form.name', 'Name'],
+      ['envs.form.nameHint', 'Start with a letter or underscore; letters, digits and underscores only'],
+      ['envs.form.value', 'Value'],
+      ['envs.form.remarks', 'Remarks (optional)'],
+      ['envs.form.labels', 'Labels (comma separated)'],
+      ['crons.search', 'Search name or command'],
+      ['crons.add', 'New task'],
+      ['crons.col.name', 'Name'],
+      ['crons.col.command', 'Command'],
+      ['crons.col.schedule', 'Schedule'],
+      ['crons.col.status', 'Status'],
+      ['crons.col.last', 'Last run'],
+      ['crons.col.actions', 'Actions'],
+      ['crons.empty', 'No scheduled tasks.'],
+      ['crons.run', 'Run'],
+      ['crons.stop', 'Stop'],
+      ['crons.log', 'Log'],
+      ['crons.autoRefresh', 'Auto refresh'],
+      ['crons.deleteConfirm', 'Delete {count} scheduled task(s)?'],
+      ['crons.total', '{total} total'],
+      ['crons.prev', 'Previous'],
+      ['crons.next', 'Next'],
+      ['crons.page', 'Page {page} / {pages}'],
+      ['crons.form.create', 'New scheduled task'],
+      ['crons.form.edit', 'Edit task "{name}"'],
+      ['crons.form.name', 'Task name'],
+      ['crons.form.command', 'Command (for example task demo.js)'],
+      ['crons.form.schedule', 'Schedule (5/6 fields or a macro such as @daily)'],
+      ['crons.form.labels', 'Labels (comma separated)'],
+      ['crons.form.taskBefore', 'Before command (optional)'],
+      ['crons.form.taskAfter', 'After command (optional)'],
+      ['crons.form.workDir', 'Working directory (optional)'],
+      ['crons.form.multi', 'Allow multiple instances of this task'],
+      ['crons.form.preview', 'Next triggers'],
+      ['crons.form.previewEmpty', 'Enter a schedule to preview its next triggers'],
+      ['log.title', 'Task log "{name}"'],
+      ['log.empty', 'No log content yet.'],
+      ['log.status', 'Log status'],
+      ['log.truncated', '(truncated, tail only)'],
+    ])
+
+    /**
+     * Module-level dictionary self-check. A repeated key never reaches runtime
+     * as a duplicate (the object collapses it), so the pair lists kept by
+     * `defineDict` are compared instead. Warnings only: a bad dictionary string
+     * must never keep the plugin from loading.
+     */
+    function auditDictionaries() {
+      for (const { name, pairs, dict } of DICTS) {
+        const seen = new Set()
+        const duplicated = []
+        for (const [key] of pairs) {
+          if (seen.has(key)) duplicated.push(key)
+          else seen.add(key)
+        }
+        const keys = Object.keys(dict)
+        if (duplicated.length > 0) {
+          console.warn(`[dsh-cronops] i18n "${name}": duplicate key(s) ${duplicated.map(key => `"${key}"`).join(', ')} — only the last entry wins`)
+        }
+        if (keys.length !== seen.size) {
+          console.warn(`[dsh-cronops] i18n "${name}": ${pairs.length} entries collapsed into ${keys.length} keys`)
+        }
+      }
+    }
+
+    try {
+      auditDictionaries()
+    } catch (failure) {
+      console.warn('[dsh-cronops] i18n audit skipped:', failure)
     }
 
     /** Interpolate `{name}` placeholders. */
@@ -362,6 +415,134 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // ------------------------------------------------------------ panel kinds
+
+    /**
+     * Built-in panel-kind metadata, used only when the host response carries no
+     * `kinds` (an older host). It mirrors what the host sends today, so the form
+     * keeps working unchanged until the host half ships the new field.
+     */
+    const FALLBACK_KINDS = [
+      {
+        kind: 'qinglong',
+        label: '青龙',
+        authKind: 'open',
+        credentialFields: [
+          { key: 'appKey', i18nKey: 'panels.field.clientId', secret: false },
+          { key: 'appSecret', i18nKey: 'panels.field.clientSecret', secret: true },
+        ],
+        scopeOrder: ['envs', 'crons', 'subscriptions', 'configs', 'scripts', 'logs', 'dependencies', 'system', 'dashboard'],
+        ignoredScopes: [],
+        supportsWorkDir: true,
+      },
+      {
+        kind: 'daidai',
+        label: '呆呆',
+        authKind: 'open',
+        credentialFields: [
+          { key: 'appKey', i18nKey: 'panels.field.appKey', secret: false },
+          { key: 'appSecret', i18nKey: 'panels.field.appSecret', secret: true },
+        ],
+        scopeOrder: ['tasks', 'envs', 'logs', 'scripts', 'subscriptions', 'system', 'backup'],
+        ignoredScopes: ['notifications'],
+        supportsWorkDir: false,
+      },
+    ]
+
+    /** The host kind list, or the built-in fallback when it is missing/empty. */
+    function normalizeKinds(value) {
+      if (!Array.isArray(value)) return FALLBACK_KINDS
+      const usable = value.filter(entry => entry !== null && typeof entry === 'object'
+        && typeof entry.kind === 'string' && entry.kind !== '')
+      return usable.length === 0 ? FALLBACK_KINDS : usable
+    }
+
+    /**
+     * The credential shape a product needs. `open` is a key/secret pair the
+     * host exchanges for a token; `token` is a token pasted in from the panel.
+     */
+    function kindAuthKind(kinds, kind) {
+      return kindMeta(kinds, kind).authKind === 'token' ? 'token' : 'open'
+    }
+
+    /** Label of the single-token box: the product's own name for it, if it has one. */
+    function tokenLabel(kinds, kind) {
+      const field = kindAuthKind(kinds, kind) === 'token' ? kindFields(kinds, kind)[0] : undefined
+      return field === undefined ? tt('panels.form.token') : fieldLabel(field)
+    }
+
+    /** Metadata of one kind; an unknown kind still yields a usable empty shell. */
+    function kindMeta(kinds, kind) {
+      const list = Array.isArray(kinds) && kinds.length > 0 ? kinds : FALLBACK_KINDS
+      const found = list.find(entry => entry !== null && typeof entry === 'object' && entry.kind === kind)
+      if (found !== undefined) return found
+      const name = typeof kind === 'string' ? kind : ''
+      return {
+        kind: name,
+        label: name,
+        credentialFields: [],
+        scopeOrder: [],
+        ignoredScopes: [],
+        supportsWorkDir: false,
+      }
+    }
+
+    /** First configured kind: the default for a brand-new panel. */
+    function defaultKind(kinds) {
+      const list = Array.isArray(kinds) && kinds.length > 0 ? kinds : FALLBACK_KINDS
+      return typeof list[0].kind === 'string' ? list[0].kind : ''
+    }
+
+    /** `tt` with a literal fallback for a key the dictionary may not carry. */
+    function ttOr(key, literal) {
+      if (typeof key !== 'string' || key === '') return literal
+      const text = tt(key)
+      return typeof text === 'string' && text !== '' && text !== key ? text : literal
+    }
+
+    /** Kind label: dictionary key `panels.kind.<kind>`, else the host label. */
+    function kindLabel(kinds, kind) {
+      if (typeof kind !== 'string' || kind === '') return ''
+      return ttOr('panels.kind.' + kind, kindMeta(kinds, kind).label ?? kind)
+    }
+
+    /** `appKey` -> `app_key`: keeps the old mono placeholder look. */
+    function fieldPlaceholder(field) {
+      return typeof field.key === 'string' ? field.key.replace(/([A-Z])/g, '_$1').toLowerCase() : ''
+    }
+
+    /** Credential fields of a kind, as the host described them. */
+    function kindFields(kinds, kind) {
+      const fields = kindMeta(kinds, kind).credentialFields
+      return Array.isArray(fields)
+        ? fields.filter(field => field !== null && typeof field === 'object'
+          && typeof field.key === 'string' && field.key !== '')
+        : []
+    }
+
+    /** Field label: literal `label`, else its i18n key, else the field name. */
+    function fieldLabel(field) {
+      if (typeof field.label === 'string' && field.label !== '') return field.label
+      return ttOr(field.i18nKey, fieldPlaceholder(field))
+    }
+
+    /** Scope badge order for a kind. */
+    function kindScopeOrder(kinds, kind) {
+      const order = kindMeta(kinds, kind).scopeOrder
+      return Array.isArray(order) ? order.filter(name => typeof name === 'string' && name !== '') : []
+    }
+
+    /** Scopes a kind never displays. */
+    function kindIgnoredScopes(kinds, kind) {
+      const ignored = kindMeta(kinds, kind).ignoredScopes
+      return Array.isArray(ignored) ? ignored.filter(name => typeof name === 'string' && name !== '') : []
+    }
+
+    /** Whether the kind's cron form shows the work_dir field. */
+    function kindSupportsWorkDir(kinds, kind) {
+      return kindMeta(kinds, kind).supportsWorkDir === true
+    }
+
     // ----------------------------------------------------------------- api
 
     /** Encode a query object, dropping empty values. */
@@ -374,6 +555,57 @@ window.__ModuleLoader__.load({
       const text = search.toString()
       return text === '' ? '' : '?' + text
     }
+
+    /** Page size for the scheduled-task table. */
+    const CRON_PAGE_SIZE = 20
+
+    /**
+     * One resource read bound to one component. It refetches when a key in
+     * `deps` changes or when the caller asks for `reload()` (loading state) or
+     * `refresh()` (silent, for polling). `select` narrows the payload into the
+     * shape the component renders.
+     * @param load - () => Promise<payload>; the newest closure wins.
+     * @param select - payload => value.
+     * @param deps - refetch keys.
+     */
+    function useLoader(load, select, deps) {
+      const [value, setValue] = useState(undefined)
+      const [state, setState] = useState({ loading: true, error: '' })
+      const latest = useRef({ load, select })
+      latest.current = { load, select }
+      const generation = useRef(0)
+      const run = useCallback(silent => {
+        const id = ++generation.current
+        if (silent !== true) setState(current => ({ ...current, loading: true, error: '' }))
+        return latest.current.load()
+          .then(payload => {
+            if (generation.current === id) setValue(latest.current.select(payload))
+          })
+          .catch(failure => {
+            if (generation.current !== id || silent === true) return
+            setValue(undefined)
+            setState({ loading: false, error: errorText(failure) })
+          })
+          .finally(() => {
+            if (generation.current === id && silent !== true) setState(current => ({ ...current, loading: false }))
+          })
+      }, [])
+      useEffect(() => {
+        void run(false)
+        // Latest load/select are read through a ref, so only the keys refetch.
+      }, deps)
+      useEffect(() => () => { generation.current += 1 }, [])
+      return {
+        value,
+        loading: state.loading,
+        error: state.error,
+        reload: useCallback(() => run(false), [run]),
+        refresh: useCallback(() => run(true), [run]),
+      }
+    }
+
+    /** One message string out of a thrown value. */
+    const errorText = failure => (failure instanceof Error ? failure.message : String(failure))
 
     /** One JSON round trip against the host route family. */
     async function request(path, options = {}) {
@@ -390,7 +622,7 @@ window.__ModuleLoader__.load({
       try {
         response = await fetch(path + query(options.query), init)
       } catch (error) {
-        throw new Error('无法连接 dsh 宿主（' + (error instanceof Error ? error.message : String(error)) + '）')
+        throw new Error('无法连接 dsh 宿主（' + errorText(error) + '）')
       }
       const text = await response.text()
       let payload
@@ -406,11 +638,14 @@ window.__ModuleLoader__.load({
     }
 
     /** The host route family, one method per operation. */
+    /** Panel-catalogue route, used by five verbs. */
+    const PANELS_PATH = API_BASE + '/panels'
+
     const api = {
-      panels: () => request(API_BASE + '/panels'),
-      createPanel: payload => request(API_BASE + '/panels', { method: 'POST', body: payload }),
-      updatePanel: (alias, payload) => request(API_BASE + '/panels', { method: 'PATCH', query: { alias }, body: payload }),
-      deletePanel: alias => request(API_BASE + '/panels', { method: 'DELETE', query: { alias } }),
+      panels: () => request(PANELS_PATH),
+      createPanel: payload => request(PANELS_PATH, { method: 'POST', body: payload }),
+      updatePanel: (alias, payload) => request(PANELS_PATH, { method: 'PATCH', query: { alias }, body: payload }),
+      deletePanel: alias => request(PANELS_PATH, { method: 'DELETE', query: { alias } }),
       setDefaultPanel: alias => request(API_BASE + '/panels/default', { method: 'POST', body: { alias } }),
       test: (alias, refresh) => request(API_BASE + '/test', { method: 'POST', body: { alias, ...(refresh === true ? { refresh: true } : {}) } }),
       envs: (alias, searchValue) => request(API_BASE + '/envs', { query: { alias, searchValue } }),
@@ -530,7 +765,7 @@ window.__ModuleLoader__.load({
           try {
             selectPanel(null)
           } catch {
-            // A shell without the navigation face keeps its current selection.
+            // A shell without the navigation face keeps what it was showing.
           }
         },
       }
@@ -695,12 +930,25 @@ window.__ModuleLoader__.load({
     /** Panel create/edit dialog. */
     function PanelDialog(props) {
       const editing = props.panel !== undefined
+      const kinds = normalizeKinds(props.kinds)
       const [alias, setAlias] = useState(editing ? props.panel.alias : '')
-      const [kind, setKind] = useState(editing ? props.panel.kind : 'qinglong')
+      const [kind, setKind] = useState(editing ? props.panel.kind : defaultKind(kinds))
       const [baseUrl, setBaseUrl] = useState(editing ? props.panel.baseUrl : 'http://')
-      const [authKind, setAuthKind] = useState(editing ? props.panel.auth : 'open')
-      const [appKey, setAppKey] = useState(editing && props.panel.auth === 'open' ? (props.panel.appKey ?? '') : '')
-      const [appSecret, setAppSecret] = useState('')
+      const [authKind, setAuthKind] = useState(() => (editing
+        ? (props.panel.auth?.kind ?? kindAuthKind(kinds, props.panel.kind))
+        : kindAuthKind(kinds, defaultKind(kinds))))
+      // Credentials are keyed by the metadata's `credentialFields[].key`, so the
+      // submitted auth object follows the host contract instead of one hardcoded
+      // appKey/appSecret pair. The secret is write-only: the store never returns
+      // it, so an edit always starts with an empty secret box.
+      const [credentials, setCredentials] = useState(() => {
+        const seed = {}
+        for (const field of kindFields(kinds, editing ? props.panel.kind : defaultKind(kinds))) {
+          const saved = editing && props.panel.auth?.kind === 'open' ? props.panel.auth[field.key] : undefined
+          seed[field.key] = typeof saved === 'string' ? saved : ''
+        }
+        return seed
+      })
       const [token, setToken] = useState('')
       const [timeoutMs, setTimeoutMs] = useState(editing && props.panel.timeoutMs !== undefined ? String(props.panel.timeoutMs) : '')
       const [insecureTls, setInsecureTls] = useState(editing ? props.panel.insecureTls === true : false)
@@ -721,13 +969,19 @@ window.__ModuleLoader__.load({
           if (timeoutMs.trim() !== '') payload.timeoutMs = Number(timeoutMs)
           if (!editing) payload.alias = alias.trim()
           if (authKind === 'open') {
-            if (appKey.trim() !== '' || appSecret.trim() !== '') {
-              if (appSecret.trim() === '' && editing) {
+            const fields = kindFields(kinds, kind)
+            const values = fields.map(field => ({ field, value: String(credentials[field.key] ?? '').trim() }))
+            if (values.some(item => item.value !== '')) {
+              // The secret is write-only, so an edit that keeps it leaves the box
+              // empty; any other blank field is a half-filled credential.
+              if (editing && values.some(item => item.value === '')) {
                 throw new Error(tt('panels.form.keepSecret'))
               }
-              payload.auth = { kind: 'open', appKey: appKey.trim(), appSecret: appSecret.trim() }
+              const auth = { kind: 'open' }
+              for (const item of values) auth[item.field.key] = item.value
+              payload.auth = auth
             } else if (!editing) {
-              throw new Error(`${tt('panels.form.appKey')} / ${tt('panels.form.appSecret')} 不能为空`)
+              throw new Error(`${values.map(item => fieldLabel(item.field)).join(' / ')} 不能为空`)
             }
           } else {
             if (token.trim() !== '') payload.auth = { kind: 'token', token: token.trim() }
@@ -737,7 +991,7 @@ window.__ModuleLoader__.load({
           else await props.api.createPanel(payload)
           await props.onSaved()
         } catch (failure) {
-          setError(failure instanceof Error ? failure.message : String(failure))
+          setError(errorText(failure))
         } finally {
           setBusy(false)
         }
@@ -758,10 +1012,21 @@ window.__ModuleLoader__.load({
         h('select', {
           className: 'dq-select',
           value: kind,
-          onChange: event => setKind(event.target.value),
+          onChange: event => {
+            const next = event.target.value
+            setKind(next)
+            // Credential *shape* is a product property too, not a constant.
+            setAuthKind(kindAuthKind(kinds, next))
+            // Switching product changes the credential fields: keep whatever the
+            // user already typed under a key the new product also uses.
+            setCredentials(current => {
+              const seed = {}
+              for (const field of kindFields(kinds, next)) seed[field.key] = current[field.key] ?? ''
+              return seed
+            })
+          },
         },
-        h('option', { value: 'qinglong' }, tt('panels.kind.qinglong')),
-        h('option', { value: 'daidai' }, tt('panels.kind.daidai')))),
+        kinds.map(entry => h('option', { key: entry.kind, value: entry.kind }, kindLabel(kinds, entry.kind))))),
       h(Field, { label: tt('panels.form.baseUrl'), hint: '例如 http://panel-host:5700' },
         h(Input, { value: baseUrl, placeholder: 'http://host:5700', onChange: event => setBaseUrl(event.target.value) })),
       h(Field, { label: tt('panels.form.authKind') },
@@ -774,23 +1039,18 @@ window.__ModuleLoader__.load({
         h('option', { value: 'token' }, tt('panels.auth.token')))),
       authKind === 'open'
         ? h(React.Fragment, null,
-          h(Field, { label: kind === 'daidai' ? tt('panels.form.appKey') : tt('panels.form.clientId') },
-            h(Input, {
-              value: appKey,
-              placeholder: kind === 'daidai' ? 'app_key' : 'client_id',
-              onChange: event => setAppKey(event.target.value),
-            })),
-          h(Field, {
-            label: kind === 'daidai' ? tt('panels.form.appSecret') : tt('panels.form.clientSecret'),
-            hint: editing ? tt('panels.form.keepSecret') : undefined,
+          kindFields(kinds, kind).map(field => h(Field, {
+            key: field.key,
+            label: fieldLabel(field),
+            hint: editing && field.secret === true ? tt('panels.form.keepSecret') : undefined,
           },
           h(Input, {
-            type: 'password',
-            value: appSecret,
-            placeholder: kind === 'daidai' ? 'app_secret' : 'client_secret',
-            onChange: event => setAppSecret(event.target.value),
-          })))
-        : h(Field, { label: tt('panels.form.token'), hint: editing ? tt('panels.form.keepSecret') : undefined },
+            type: field.secret === true ? 'password' : undefined,
+            value: credentials[field.key] ?? '',
+            placeholder: fieldPlaceholder(field),
+            onChange: event => setCredentials(current => ({ ...current, [field.key]: event.target.value })),
+          }))))
+        : h(Field, { label: tokenLabel(kinds, kind), hint: editing ? tt('panels.form.keepSecret') : undefined },
           h(Input, { type: 'password', value: token, placeholder: 'token', onChange: event => setToken(event.target.value) })),
       h('div', { className: 'dq-grid2' },
         h(Field, { label: tt('panels.form.timeoutMs') },
@@ -803,7 +1063,7 @@ window.__ModuleLoader__.load({
     }
 
     /** The hosts tab: panel connections. */
-    function PanelsTab({ panels, api, reload, notice, testOne, testAll, testingAlias, testingAll }) {
+    function PanelsTab({ panels, api, reload, notice, testOne, testAll, testingAlias, testingAll, kinds }) {
       const [dialog, setDialog] = useState(undefined)
 
       const remove = async panel => {
@@ -812,7 +1072,7 @@ window.__ModuleLoader__.load({
           await api.deletePanel(panel.alias)
           await reload({ dropAlias: panel.alias })
         } catch (failure) {
-          notice('error', failure instanceof Error ? failure.message : String(failure))
+          notice('error', errorText(failure))
         }
       }
       const makeDefault = async panel => {
@@ -820,7 +1080,7 @@ window.__ModuleLoader__.load({
           await api.setDefaultPanel(panel.alias)
           await reload()
         } catch (failure) {
-          notice('error', failure instanceof Error ? failure.message : String(failure))
+          notice('error', errorText(failure))
         }
       }
 
@@ -840,9 +1100,10 @@ window.__ModuleLoader__.load({
         if (typeof scopes !== 'object' || scopes === null) {
           return h('div', { className: 'dq-cellMuted' }, tt('panels.scopes.unknown'))
         }
-        const order = kind === 'daidai'
-          ? ['tasks', 'envs', 'logs', 'scripts', 'subscriptions', 'system', 'backup']
-          : ['envs', 'crons', 'subscriptions', 'configs', 'scripts', 'logs', 'dependencies', 'dashboard', 'system']
+        // Badge order and the hidden set come from the host's kind metadata, so a
+        // product that reports a scope this build has never heard of still gets a
+        // sensible position instead of a leading one.
+        const order = kindScopeOrder(kinds, kind)
         const states = {
           ok: ['ok', '✓'],
           public: ['ok', '✓'],
@@ -852,9 +1113,10 @@ window.__ModuleLoader__.load({
           'n/a': ['unknown', '–'],
         }
         // Preferred order, then any extra scope the panel reports: a new scope
-        // must never disappear silently. `notifications` is skipped for Daidai:
-        // older probes stored it, but its endpoint only accepts user tokens.
-        const ignored = kind === 'daidai' ? ['notifications'] : []
+        // must never disappear silently. `ignoredScopes` is where a kind names the
+        // scopes its driver still reports but the UI must hide (a scope that only
+        // accepts user tokens, say, always answers 403 for an app credential).
+        const ignored = kindIgnoredScopes(kinds, kind)
         const ordered = [
           ...order,
           ...Object.keys(scopes).filter(name => !order.includes(name) && !ignored.includes(name)),
@@ -891,7 +1153,7 @@ window.__ModuleLoader__.load({
           h('td', null,
             h('span', { className: 'dq-cellName' }, panel.alias),
             panel.isDefault ? h('span', { className: 'dq-badge' }, tt('panels.default')) : null),
-          h('td', { className: 'dq-cellMuted' }, panel.kind === 'daidai' ? tt('panels.kind.daidai') : tt('panels.kind.qinglong')),
+          h('td', { className: 'dq-cellMuted' }, kindLabel(kinds, panel.kind)),
           h('td', { className: 'dq-mono dq-cellEllipsis', title: panel.baseUrl }, panel.baseUrl),
           h('td', null, scopeChips(test, panel.kind)),
           h('td', null,
@@ -942,6 +1204,7 @@ window.__ModuleLoader__.load({
         ? null
         : h(PanelDialog, {
           api,
+          kinds,
           panel: dialog.mode === 'edit' ? dialog.panel : undefined,
           onClose: () => setDialog(undefined),
           onSaved: async created => {
@@ -990,7 +1253,7 @@ window.__ModuleLoader__.load({
           }
           await props.onSaved()
         } catch (failure) {
-          setError(failure instanceof Error ? failure.message : String(failure))
+          setError(errorText(failure))
         } finally {
           setBusy(false)
         }
@@ -1016,43 +1279,22 @@ window.__ModuleLoader__.load({
     }
 
     /** The environment-variable tab. */
-    function EnvsTab({ alias, api, notice, revision, panels }) {
-      const [rows, setRows] = useState([])
-      const [loading, setLoading] = useState(false)
-      const [error, setError] = useState('')
+    function EnvsTab({ alias, api, notice, revision, panels, kinds }) {
       const [search, setSearch] = useState('')
       const [selected, setSelected] = useState([])
       const [dialog, setDialog] = useState(undefined)
 
       // alias + revision are the refetch keys: switching the header picker or
       // reloading the panel list both land here as a changed primitive.
-      useEffect(() => {
-        let alive = true
-        setSelected([])
-        setLoading(true)
-        setError('')
-        api.envs(alias, search)
-          .then(payload => { if (alive) setRows(Array.isArray(payload.envs) ? payload.envs : []) })
-          .catch(failure => {
-            if (!alive) return
-            setRows([])
-            setError(failure instanceof Error ? failure.message : String(failure))
-          })
-          .finally(() => { if (alive) setLoading(false) })
-        return () => { alive = false }
-      }, [alias, revision, api])
-
-      const reload = () => {
-        setLoading(true)
-        setError('')
-        return api.envs(alias, search)
-          .then(payload => setRows(Array.isArray(payload.envs) ? payload.envs : []))
-          .catch(failure => {
-            setRows([])
-            setError(failure instanceof Error ? failure.message : String(failure))
-          })
-          .finally(() => setLoading(false))
-      }
+      const load = useCallback(() => api.envs(alias, search), [api, alias, search])
+      const { value, loading, error, reload } = useLoader(
+        load,
+        payload => (Array.isArray(payload.envs) ? payload.envs : []),
+        [alias, revision, api, search],
+      )
+      const rows = value ?? []
+      // A panel switch clears the selection; the loader does not own that.
+      useEffect(() => { setSelected([]) }, [alias, revision])
 
       const toggleSelected = id => {
         setSelected(current => (current.includes(id) ? current.filter(item => item !== id) : [...current, id]))
@@ -1065,7 +1307,7 @@ window.__ModuleLoader__.load({
           setSelected([])
           await reload()
         } catch (failure) {
-          notice('error', failure instanceof Error ? failure.message : String(failure))
+          notice('error', errorText(failure))
         }
       }
 
@@ -1077,7 +1319,7 @@ window.__ModuleLoader__.load({
           setSelected([])
           await reload()
         } catch (failure) {
-          notice('error', failure instanceof Error ? failure.message : String(failure))
+          notice('error', errorText(failure))
         }
       }
 
@@ -1139,12 +1381,11 @@ window.__ModuleLoader__.load({
           h('tbody', null, rowsView)))
 
       const currentPanel = panels.find(panel => panel.alias === alias)
-      const panelKind = currentPanel?.kind ?? 'qinglong'
       const where = h('div', { className: 'dq-where' },
         tt('current.panel', { alias, url: currentPanel?.baseUrl ?? '' }),
         currentPanel === undefined
           ? null
-          : h('span', { className: 'dq-badge' }, panelKind === 'daidai' ? tt('panels.kind.daidai') : tt('panels.kind.qinglong')))
+          : h('span', { className: 'dq-badge' }, kindLabel(kinds, currentPanel.kind)))
 
       const toolbar = h('div', { className: 'dq-toolbar' },
         where,
@@ -1205,7 +1446,7 @@ window.__ModuleLoader__.load({
             setState({ loading: false, times, error: '' })
           } catch (failure) {
             if (!alive) return
-            setState({ loading: false, times: [], error: failure instanceof Error ? failure.message : String(failure) })
+            setState({ loading: false, times: [], error: errorText(failure) })
           }
         }, 350)
         return () => { alive = false; clearTimeout(timer) }
@@ -1250,7 +1491,7 @@ window.__ModuleLoader__.load({
           else await props.api.createCron(props.alias, payload)
           await props.onSaved()
         } catch (failure) {
-          setError(failure instanceof Error ? failure.message : String(failure))
+          setError(errorText(failure))
         } finally {
           setBusy(false)
         }
@@ -1280,8 +1521,8 @@ window.__ModuleLoader__.load({
           h(Input, { value: taskBefore, onChange: event => setTaskBefore(event.target.value) })),
         h(Field, { label: tt('crons.form.taskAfter') },
           h(Input, { value: taskAfter, onChange: event => setTaskAfter(event.target.value) }))),
-      props.kind === 'daidai' ? null : h(Field, { label: tt('crons.form.workDir') },
-        h(Input, { value: workDir, onChange: event => setWorkDir(event.target.value) })),
+      kindSupportsWorkDir(props.kinds, props.kind) ? h(Field, { label: tt('crons.form.workDir') },
+        h(Input, { value: workDir, onChange: event => setWorkDir(event.target.value) })) : null,
       h('label', { className: 'dq-check' },
         h('input', { type: 'checkbox', checked: multi, onChange: event => setMulti(event.target.checked) }),
         tt('crons.form.multi')))
@@ -1303,7 +1544,7 @@ window.__ModuleLoader__.load({
           setContent(typeof payload.content === 'string' ? payload.content : '')
           setMeta({ status: payload.logStatus, total: payload.total, truncated: payload.truncated })
         } catch (failure) {
-          setError(failure instanceof Error ? failure.message : String(failure))
+          setError(errorText(failure))
         } finally {
           setLoading(false)
         }
@@ -1338,13 +1579,8 @@ window.__ModuleLoader__.load({
     }
 
     /** The scheduled-task tab. */
-    function CronsTab({ alias, api, notice, revision, panels }) {
-      const PAGE_SIZE = 20
-      const [rows, setRows] = useState([])
-      const [total, setTotal] = useState(undefined)
+    function CronsTab({ alias, api, notice, revision, panels, kinds }) {
       const [page, setPage] = useState(1)
-      const [loading, setLoading] = useState(false)
-      const [error, setError] = useState('')
       const [search, setSearch] = useState('')
       const [dialog, setDialog] = useState(undefined)
       const [logCron, setLogCron] = useState(undefined)
@@ -1354,39 +1590,20 @@ window.__ModuleLoader__.load({
 
       useEffect(() => { setPage(1) }, [alias])
 
-      useEffect(() => {
-        let alive = true
-        setLoading(true)
-        setError('')
-        api.crons(alias, { searchValue: search, page, size: PAGE_SIZE })
-          .then(payload => {
-            if (!alive) return
-            setRows(Array.isArray(payload.rows) ? payload.rows : [])
-            setTotal(typeof payload.total === 'number' ? payload.total : undefined)
-          })
-          .catch(failure => {
-            if (!alive) return
-            setRows([])
-            setError(failure instanceof Error ? failure.message : String(failure))
-          })
-          .finally(() => { if (alive) setLoading(false) })
-        return () => { alive = false }
-      }, [alias, revision, api, search, page])
-
-      const reload = () => {
-        setLoading(true)
-        setError('')
-        return api.crons(alias, { searchValue: search, page, size: PAGE_SIZE })
-          .then(payload => {
-            setRows(Array.isArray(payload.rows) ? payload.rows : [])
-            setTotal(typeof payload.total === 'number' ? payload.total : undefined)
-          })
-          .catch(failure => {
-            setRows([])
-            setError(failure instanceof Error ? failure.message : String(failure))
-          })
-          .finally(() => setLoading(false))
-      }
+      const load = useCallback(
+        () => api.crons(alias, { searchValue: search, page, size: CRON_PAGE_SIZE }),
+        [api, alias, search, page],
+      )
+      const { value, loading, error, reload, refresh } = useLoader(
+        load,
+        payload => ({
+          rows: Array.isArray(payload.rows) ? payload.rows : [],
+          total: typeof payload.total === 'number' ? payload.total : undefined,
+        }),
+        [alias, revision, api, search, page],
+      )
+      const rows = value?.rows ?? []
+      const total = value?.total
 
       /** Mark the affected rows busy for the whole request + refresh window. */
       const withPending = async (ids, body) => {
@@ -1412,7 +1629,7 @@ window.__ModuleLoader__.load({
           if (action === 'run') notice('ok', tt('notice.triggered'))
           await reload()
         } catch (failure) {
-          notice('error', failure instanceof Error ? failure.message : String(failure))
+          notice('error', errorText(failure))
         }
       })
 
@@ -1423,7 +1640,7 @@ window.__ModuleLoader__.load({
             await api.deleteCrons(alias, ids)
             await reload()
           } catch (failure) {
-            notice('error', failure instanceof Error ? failure.message : String(failure))
+            notice('error', errorText(failure))
           }
         })
       }
@@ -1435,11 +1652,7 @@ window.__ModuleLoader__.load({
           if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
           if (polling.current) return
           polling.current = true
-          api.crons(alias, { searchValue: search, page, size: PAGE_SIZE })
-            .then(payload => {
-              setRows(Array.isArray(payload.rows) ? payload.rows : [])
-              setTotal(typeof payload.total === 'number' ? payload.total : undefined)
-            })
+          void refresh()
             .catch(() => { /* a poll failure must not disturb the view */ })
             .finally(() => { polling.current = false })
         }, 5000)
@@ -1492,7 +1705,7 @@ window.__ModuleLoader__.load({
               h('th', null, tt('crons.col.actions')))),
           h('tbody', null, rowsView)))
 
-      const pages = total === undefined ? undefined : Math.max(1, Math.ceil(total / PAGE_SIZE))
+      const pages = total === undefined ? undefined : Math.max(1, Math.ceil(total / CRON_PAGE_SIZE))
       const pager = h('span', { className: 'dq-pager' },
         total === undefined ? tt('common.none') : tt('crons.total', { total }),
         h(Button, { disabled: page <= 1, onClick: () => setPage(page - 1) }, tt('crons.prev')),
@@ -1500,12 +1713,11 @@ window.__ModuleLoader__.load({
         h(Button, { disabled: pages !== undefined && page >= pages, onClick: () => setPage(page + 1) }, tt('crons.next')))
 
       const currentPanel = panels.find(panel => panel.alias === alias)
-      const panelKind = currentPanel?.kind ?? 'qinglong'
       const where = h('div', { className: 'dq-where' },
         tt('current.panel', { alias, url: currentPanel?.baseUrl ?? '' }),
         currentPanel === undefined
           ? null
-          : h('span', { className: 'dq-badge' }, panelKind === 'daidai' ? tt('panels.kind.daidai') : tt('panels.kind.qinglong')))
+          : h('span', { className: 'dq-badge' }, kindLabel(kinds, currentPanel.kind)))
 
       const toolbar = h('div', { className: 'dq-toolbar' },
         where,
@@ -1532,7 +1744,8 @@ window.__ModuleLoader__.load({
         : h(CronDialog, {
           api,
           alias,
-          kind: panelKind,
+          kinds,
+          kind: currentPanel?.kind,
           cron: dialog.mode === 'edit' ? dialog.cron : undefined,
           onClose: () => setDialog(undefined),
           onSaved: async () => { setDialog(undefined); await reload() },
@@ -1622,6 +1835,10 @@ window.__ModuleLoader__.load({
       const [testingAlias, setTestingAlias] = useState('')
       const [testingAll, setTestingAll] = useState(false)
       const [listBusy, setListBusy] = useState(false)
+      // Product catalogue as the host describes it (`GET .../panels` → kinds).
+      // Everything the form shows per product — credential fields, scope order,
+      // whether a cron carries a work_dir — is read from here.
+      const [kinds, setKinds] = useState(FALLBACK_KINDS)
 
       /**
        * Reload the panel list into the shared controller state.
@@ -1635,6 +1852,7 @@ window.__ModuleLoader__.load({
         try {
           const payload = await api.panels()
           const list = Array.isArray(payload.panels) ? payload.panels : []
+          setKinds(normalizeKinds(payload.kinds))
           controller.setPanels(list, payload.defaultPanel)
           const current = controller.getSnapshot()
           if (typeof options.selectAlias === 'string' && options.selectAlias !== '') {
@@ -1647,7 +1865,7 @@ window.__ModuleLoader__.load({
             controller.selectAlias(preferred.alias)
           }
         } catch (failure) {
-          setError(failure instanceof Error ? failure.message : String(failure))
+          setError(errorText(failure))
         } finally {
           setLoading(false)
           setListBusy(false)
@@ -1685,7 +1903,7 @@ window.__ModuleLoader__.load({
           // already shows the freshly persisted probe.
           await loadPanels()
         } catch (failure) {
-          controller.notice('error', failure instanceof Error ? failure.message : String(failure))
+          controller.notice('error', errorText(failure))
         } finally {
           setTestingAlias('')
         }
@@ -1697,7 +1915,7 @@ window.__ModuleLoader__.load({
           for (const panel of panels) await api.test(panel.alias, true)
           await loadPanels()
         } catch (failure) {
-          controller.notice('error', failure instanceof Error ? failure.message : String(failure))
+          controller.notice('error', errorText(failure))
         } finally {
           setTestingAll(false)
         }
@@ -1736,6 +1954,7 @@ window.__ModuleLoader__.load({
       const active = snapshot.tab === 'panels'
         ? h(PanelsTab, {
           panels,
+          kinds,
           api,
           reload: loadPanels,
           notice,
@@ -1747,8 +1966,8 @@ window.__ModuleLoader__.load({
         : alias === ''
           ? empty
           : snapshot.tab === 'envs'
-            ? h(EnvsTab, { alias, api, notice, revision: snapshot.revision, panels })
-            : h(CronsTab, { alias, api, notice, revision: snapshot.revision, panels })
+            ? h(EnvsTab, { alias, api, notice, revision: snapshot.revision, panels, kinds })
+            : h(CronsTab, { alias, api, notice, revision: snapshot.revision, panels, kinds })
 
       const loadingHint = loading && panels.length === 0
         ? h('div', { className: 'dq-loading' }, tt('common.loading'))
@@ -1789,7 +2008,7 @@ window.__ModuleLoader__.load({
             const layout = ctx.get?.('layout')
             layout?.selectPanel?.(panelId)
           } catch {
-            // A shell without the navigation face keeps its selection.
+            // A shell without the navigation face keeps what it was showing.
           }
         }
         const controller = createController(selectPanel)
